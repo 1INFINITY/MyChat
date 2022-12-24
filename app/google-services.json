@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "985641110095",
+    "project_id": "chart-app-25384",
+    "storage_bucket": "chart-app-25384.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:985641110095:android:6daf8a37d73be60dc9383a",
+        "android_client_info": {
+          "package_name": "com.example.mychat"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "985641110095-1ffgc7ijedlngvbrggrusd0cgv0b9blt.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDCDp61jeazUZ6V64M1YFD0BJho2HaGRrc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "985641110095-1ffgc7ijedlngvbrggrusd0cgv0b9blt.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
