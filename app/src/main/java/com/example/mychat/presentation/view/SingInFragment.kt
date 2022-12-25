@@ -10,12 +10,16 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import com.example.mychat.R
+import com.example.mychat.data.repository.UserRepositoryImpl
+import com.example.mychat.data.storage.firebase.FireBaseStorageImpl
+import com.example.mychat.domain.models.User
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import org.w3c.dom.Text
 
 
 class SingInFragment : Fragment() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
     }
@@ -41,28 +45,8 @@ class SingInFragment : Fragment() {
                 .commit()
         }
 
-        val signInButton =
-            requireView().findViewById<Button>(R.id.button_sign_in)
-        signInButton.setOnClickListener{ addToFirestore() }
+
     }
 
-    private fun addToFirestore() {
-        val db = Firebase.firestore
-        // Create a new user with a first and last name
-        val user = hashMapOf(
-            "first" to "Ada",
-            "last" to "Lovelace",
-            "born" to 1815
-        )
-        db.collection("users")
-            .add(user)
-            .addOnSuccessListener { documentReference ->
-                Toast.makeText(requireContext(),
-                    "DocumentSnapshot added with ID: ${documentReference.id}",
-                    Toast.LENGTH_SHORT).show()
-            }
-            .addOnFailureListener { e ->
-                Toast.makeText(requireContext(), e.message, Toast.LENGTH_SHORT).show()
-            }
-    }
+
 }
