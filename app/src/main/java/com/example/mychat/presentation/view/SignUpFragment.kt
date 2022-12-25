@@ -10,9 +10,7 @@ import android.util.Patterns
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import android.widget.Toast
+import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import com.example.mychat.R
@@ -42,11 +40,13 @@ class SignUpFragment : Fragment() {
 
         // TODO: Find out how to do it better
         val imageField = view.findViewById<ShapeableImageView>(R.id.image_profile)
+        val textAddImage = view.findViewById<TextView>(R.id.text_add_image)
         val imagePicker =
             registerForActivityResult(ActivityResultContracts.GetContent()) { result ->
                 if (result != null)
                     profileImageBitmap = uriToBitmap(result)
                 imageField.setImageURI(result)
+                textAddImage.visibility = View.INVISIBLE
                 Log.d("Fragment", result.toString())
             }
         imageField.setOnClickListener {
@@ -78,7 +78,6 @@ class SignUpFragment : Fragment() {
             email = emailField.text.toString(),
             password = passwordField.text.toString()
         )
-        Toast.makeText(activity, "User sign up successful", Toast.LENGTH_SHORT).show()
         repository.userRegistration(user)
     }
     private fun uriToBitmap(selectedFileUri: Uri): Bitmap? {
@@ -95,6 +94,7 @@ class SignUpFragment : Fragment() {
     }
 
     private fun isValidSignUpDetails(): Boolean {
+        loading(true)
         var result = true
         var message = ""
         val nameField = requireView().findViewById<EditText>(R.id.input_name)
@@ -126,7 +126,18 @@ class SignUpFragment : Fragment() {
             message = "Successful sign up"
         }
         Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
+        if (!result)
+            loading(false)
         return result
+    }
+    private fun loading(isLoading: Boolean) {
+        if (isLoading) {
+            requireView().findViewById<Button>(R.id.button_sign_up).visibility = View.INVISIBLE
+            requireView().findViewById<ProgressBar>(R.id.progress_bar).visibility = View.VISIBLE
+        } else {
+            requireView().findViewById<Button>(R.id.button_sign_up).visibility = View.VISIBLE
+            requireView().findViewById<ProgressBar>(R.id.progress_bar).visibility = View.INVISIBLE
+        }
     }
 
 }
