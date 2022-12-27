@@ -8,9 +8,13 @@ import com.example.mychat.data.storage.firebase.FirebaseConstants.KEY_EMAIL
 import com.example.mychat.data.storage.firebase.FirebaseConstants.KEY_IMAGE
 import com.example.mychat.data.storage.firebase.FirebaseConstants.KEY_NAME
 import com.example.mychat.data.storage.firebase.FirebaseConstants.KEY_PASSWORD
+import com.example.mychat.domain.models.AuthData
 import com.example.mychat.domain.models.User
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.delay
 import java.io.ByteArrayOutputStream
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore): FireBaseUserStorage {
     val TAG = "FIREBASE_STORAGE"
@@ -33,6 +37,25 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore): FireBaseU
                 Log.d(TAG, "User add failure: ${e.message}")
             }
     }
+
+    override suspend fun checkUserExistAuthorization(authData: AuthData): Boolean {
+        return suspendCoroutine {
+            firestoreDb.collection(KEY_COLLECTION_USERS)
+                .whereEqualTo(KEY_EMAIL, authData.email)
+                .whereEqualTo(KEY_PASSWORD, authData.password)
+                .get()
+                .addOnCompleteListener { task ->
+                    if (task.isSuccessful && task.result != null && task.result.documents.size > 0){
+                        it.resume(true)
+                    }
+                    else {
+                        it.resume(false)
+                    }
+                }
+        }
+
+    }
+
     private fun encodeImage(bitmap: Bitmap): String {
         val previewWidth: Int = 150
         val previewHeight: Int = bitmap.height * previewWidth/ bitmap.width
