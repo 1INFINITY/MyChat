@@ -1,28 +1,27 @@
 package com.example.mychat.presentation.view
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.net.Uri
 import android.os.Bundle
-import android.util.Base64
 import android.util.Log
-import android.util.Patterns
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.example.mychat.R
 import com.example.mychat.data.repository.UserRepositoryImpl
 import com.example.mychat.data.storage.firebase.FireBaseStorageImpl
-import com.example.mychat.domain.models.User
+import com.example.mychat.domain.repository.ResultData
+import com.example.mychat.presentation.viewmodels.SingUpModelFactory
+import com.example.mychat.presentation.viewmodels.SingUpViewModel
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import java.io.ByteArrayOutputStream
-import java.io.FileDescriptor
-import java.io.IOException
+import kotlinx.coroutines.launch
 
 
 class SignUpFragment : Fragment() {
@@ -30,7 +29,36 @@ class SignUpFragment : Fragment() {
     private val storage = FireBaseStorageImpl(firestoreDb = db)
     private val repository = UserRepositoryImpl(firebaseStorage = storage)
 
-    private var profileImageBitmap: Bitmap? = null
+    private val vmFactory: SingUpModelFactory = SingUpModelFactory(repository)
+
+    private lateinit var vm: SingUpViewModel
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        vm = ViewModelProvider(this, vmFactory)
+            .get(SingUpViewModel::class.java)
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                vm.uiState.collect { state ->
+                    when (state) {
+                        is ResultData.Success -> {
+                            loading(false)
+                            Toast.makeText(activity, state.value, Toast.LENGTH_SHORT).show()
+                            // Switch page
+                        }
+                        is ResultData.Loading -> {
+                            loading(true)
+                        }
+                        is ResultData.Failure -> {
+                            loading(false)
+                            Toast.makeText(activity, state.message, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
@@ -44,7 +72,7 @@ class SignUpFragment : Fragment() {
         val imagePicker =
             registerForActivityResult(ActivityResultContracts.GetContent()) { result ->
                 if (result != null)
-                    profileImageBitmap = uriToBitmap(result)
+                    vm.setProfileImage(result, requireContext())
                 imageField.setImageURI(result)
                 textAddImage.visibility = View.INVISIBLE
                 Log.d("Fragment", result.toString())
@@ -60,76 +88,30 @@ class SignUpFragment : Fragment() {
         super.onStart()
         val signUpButton =
             requireView().findViewById<Button>(R.id.button_sign_up)
-        signUpButton.setOnClickListener { addToFirestore() }
+        signUpButton.setOnClickListener { userRegistration() }
 
     }
 
-    private fun addToFirestore() {
-        val imageField = requireView().findViewById<ShapeableImageView>(R.id.image_profile)
-        val nameField = requireView().findViewById<EditText>(R.id.input_name)
-        val emailField = requireView().findViewById<EditText>(R.id.input_email)
-        val passwordField = requireView().findViewById<EditText>(R.id.input_password)
-        if (!isValidSignUpDetails()) {
-            return
-        }
-        val user = User(
-            image = profileImageBitmap!!,
-            name = nameField.text.toString(),
-            email = emailField.text.toString(),
-            password = passwordField.text.toString()
-        )
-        repository.userRegistration(user)
-    }
-    private fun uriToBitmap(selectedFileUri: Uri): Bitmap? {
-        try {
-            val parcelFileDescriptor = requireContext().contentResolver.openFileDescriptor(selectedFileUri, "r")
-            val fileDescriptor: FileDescriptor = parcelFileDescriptor!!.fileDescriptor
-            val image = BitmapFactory.decodeFileDescriptor(fileDescriptor)
-            parcelFileDescriptor.close()
-            return image
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-        return null
-    }
-
-    private fun isValidSignUpDetails(): Boolean {
-        loading(true)
-        var result = true
-        var message = ""
+    private fun userRegistration() {
         val nameField = requireView().findViewById<EditText>(R.id.input_name)
         val emailField = requireView().findViewById<EditText>(R.id.input_email)
         val passwordField = requireView().findViewById<EditText>(R.id.input_password)
         val confirmPasswordField = requireView().findViewById<EditText>(R.id.input_confirm_password)
-        if (profileImageBitmap == null) {
-            message = "Select a profile image"
-            result = false
-        } else if (nameField.text.toString().trim().isEmpty()) {
-            message = "Enter name"
-            result = false
-        } else if (!Patterns.EMAIL_ADDRESS.matcher(emailField.text.toString()).matches()) {
-            message = "Enter email"
-            result = false
-        } else if (passwordField.text.toString().trim().isEmpty()) {
-            message = "Enter password"
-            result = false
-        } else if (confirmPasswordField.text.toString().trim().isEmpty()) {
-            message = "Confirm your password"
-            result = false
-        } else if (confirmPasswordField.text.toString() != passwordField.text.toString()) {
-            message = "Enter password"
-            result = false
-        } else if (passwordField.text.toString() != confirmPasswordField.text.toString()) {
-            message = "Password and confirm must be same"
-            result = false
-        } else {
-            message = "Successful sign up"
-        }
-        Toast.makeText(activity, message, Toast.LENGTH_SHORT).show()
-        if (!result)
-            loading(false)
-        return result
+
+        val name = nameField.text.toString()
+        val email = emailField.text.toString()
+        val password = passwordField.text.toString()
+        val confirmPassword = confirmPasswordField.text.toString()
+
+        vm.userRegistration(
+            name = name,
+            email = email,
+            password = password,
+            confirmPassword = confirmPassword
+        )
     }
+
+
     private fun loading(isLoading: Boolean) {
         if (isLoading) {
             requireView().findViewById<Button>(R.id.button_sign_up).visibility = View.INVISIBLE

@@ -33,6 +33,7 @@ class SingInViewModel(private val repository: UserRepository): ViewModel() {
                     is ResultData.Failure -> {
                         _uiState.value = ResultData.failure(result.message)
                     }
+                    else -> {}
                 }
             }
         }
