@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mychat.R
 import com.example.mychat.domain.models.AuthData
+import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,7 +18,7 @@ import kotlinx.coroutines.launch
 
 class SingInViewModel(private val repository: UserRepository): ViewModel() {
 
-    private var _uiState = MutableStateFlow<ResultData<String>>(ResultData.empty(null))
+    private var _uiState = MutableStateFlow<ResultData<User>>(ResultData.empty(null))
     val uiState = _uiState.asStateFlow()
 
     init {

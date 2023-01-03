@@ -1,5 +1,6 @@
 package com.example.mychat.presentation.view
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.util.Patterns
@@ -15,6 +16,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.example.mychat.R
 import com.example.mychat.data.repository.UserRepositoryImpl
 import com.example.mychat.data.storage.firebase.FireBaseStorageImpl
+import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorageImpl
 import com.example.mychat.domain.models.AuthData
 import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
@@ -28,16 +30,17 @@ import org.w3c.dom.Text
 
 
 class SingInFragment : Fragment() {
-    val db = Firebase.firestore
-    val storage = FireBaseStorageImpl(firestoreDb = db)
-    val repository = UserRepositoryImpl(firebaseStorage = storage)
-
-    private val vmFactory: SingInModelFactory = SingInModelFactory(repository)
 
     private lateinit var vm: SingInViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val db = Firebase.firestore
+        val storage = FireBaseStorageImpl(firestoreDb = db)
+        val sharedPrefs = SharedPreferencesStorageImpl(appContext = requireActivity().applicationContext)
+        val repository = UserRepositoryImpl(firebaseStorage = storage, sharedPrefsStorage = sharedPrefs)
+
+        val vmFactory: SingInModelFactory = SingInModelFactory(repository)
         vm = ViewModelProvider(this, vmFactory)
             .get(SingInViewModel::class.java)
 
@@ -47,8 +50,9 @@ class SingInFragment : Fragment() {
                     when (state) {
                         is ResultData.Success -> {
                             loading(false)
-                            Toast.makeText(activity, state.value, Toast.LENGTH_SHORT).show()
-                            // Switch page
+                            Toast.makeText(activity,
+                                "Successful auth", Toast.LENGTH_SHORT).show()
+                            switchPage(UserFragment())
                         }
                         is ResultData.Loading -> {
                             loading(true)
@@ -76,7 +80,7 @@ class SingInFragment : Fragment() {
         val textCreateNewAccount =
             requireView().findViewById<TextView>(R.id.text_create_new_account)
         textCreateNewAccount.setOnClickListener {
-            switchPage()
+            switchPage(SignUpFragment())
         }
 
         val buttonSignIn = requireView().findViewById<Button>(R.id.button_sign_in)
@@ -108,10 +112,9 @@ class SingInFragment : Fragment() {
         }
     }
 
-    private fun switchPage(){
-        val signUpFragment = SignUpFragment()
+    private fun switchPage(fragment: Fragment){
         requireActivity().supportFragmentManager.beginTransaction()
-            .replace(this.id, signUpFragment)
+            .replace(this.id, fragment)
             .addToBackStack(null)
             .commit()
     }

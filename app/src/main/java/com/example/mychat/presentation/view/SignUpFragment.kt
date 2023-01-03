@@ -15,6 +15,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.example.mychat.R
 import com.example.mychat.data.repository.UserRepositoryImpl
 import com.example.mychat.data.storage.firebase.FireBaseStorageImpl
+import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorageImpl
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.presentation.viewmodels.SingUpModelFactory
 import com.example.mychat.presentation.viewmodels.SingUpViewModel
@@ -25,15 +26,19 @@ import kotlinx.coroutines.launch
 
 
 class SignUpFragment : Fragment() {
-    private val db = Firebase.firestore
-    private val storage = FireBaseStorageImpl(firestoreDb = db)
-    private val repository = UserRepositoryImpl(firebaseStorage = storage)
 
-    private val vmFactory: SingUpModelFactory = SingUpModelFactory(repository)
-
+    private val TAG = "SIGN_UP_FRAG"
     private lateinit var vm: SingUpViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d(TAG, "Created")
+        val db = Firebase.firestore
+        val storage = FireBaseStorageImpl(firestoreDb = db)
+        val sharedPrefs = SharedPreferencesStorageImpl(appContext = requireActivity().applicationContext)
+        val repository = UserRepositoryImpl(firebaseStorage = storage, sharedPrefsStorage = sharedPrefs)
+
+        val vmFactory: SingUpModelFactory = SingUpModelFactory(repository)
+
         super.onCreate(savedInstanceState)
         vm = ViewModelProvider(this, vmFactory)
             .get(SingUpViewModel::class.java)
@@ -44,13 +49,16 @@ class SignUpFragment : Fragment() {
                     when (state) {
                         is ResultData.Success -> {
                             loading(false)
-                            Toast.makeText(activity, state.value, Toast.LENGTH_SHORT).show()
+                            Log.d(TAG, "Success")
+                            Toast.makeText(activity, "Successful sign up", Toast.LENGTH_SHORT).show()
                             // Switch page
                         }
                         is ResultData.Loading -> {
+                            Log.d(TAG, "Loading")
                             loading(true)
                         }
                         is ResultData.Failure -> {
+                            Log.d(TAG, "Registration failure")
                             loading(false)
                             Toast.makeText(activity, state.message, Toast.LENGTH_SHORT).show()
                         }
@@ -75,7 +83,7 @@ class SignUpFragment : Fragment() {
                     vm.setProfileImage(result, requireContext())
                 imageField.setImageURI(result)
                 textAddImage.visibility = View.INVISIBLE
-                Log.d("Fragment", result.toString())
+                Log.d(TAG, result.toString())
             }
         imageField.setOnClickListener {
             imagePicker.launch("image/*")
@@ -93,6 +101,7 @@ class SignUpFragment : Fragment() {
     }
 
     private fun userRegistration() {
+        Log.d(TAG, "Start registration")
         val nameField = requireView().findViewById<EditText>(R.id.input_name)
         val emailField = requireView().findViewById<EditText>(R.id.input_email)
         val passwordField = requireView().findViewById<EditText>(R.id.input_password)

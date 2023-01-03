@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Log
 import android.util.Patterns
 import android.widget.EditText
 import android.widget.Toast
@@ -23,14 +24,16 @@ import java.io.FileDescriptor
 import java.io.IOException
 
 class SingUpViewModel(private val repository: UserRepository) : ViewModel() {
-    private var _uiState = MutableStateFlow<ResultData<String>>(ResultData.empty(null))
+    private val TAG = "SIGN_UP_FRAG_VM"
+    private var _uiState = MutableStateFlow<ResultData<User>>(ResultData.empty(null))
     val uiState = _uiState.asStateFlow()
 
     private var profileImageBitmap: Bitmap? = null
 
     init {
+        Log.d(TAG, "Initialization")
         viewModelScope.launch {
-            repository.observeAuthResult().collectLatest { result ->
+            repository.observeRegistration().collectLatest { result ->
                 when (result) {
                     is ResultData.Success -> {
                         _uiState.value = ResultData.success(result.value)
@@ -48,13 +51,16 @@ class SingUpViewModel(private val repository: UserRepository) : ViewModel() {
     }
 
     fun userRegistration(name: String, email: String, password: String, confirmPassword: String) {
+        Log.d(TAG, "Start reg")
         if (isValidSignUpDetails(
                 name = name,
                 email = email,
                 password = password,
                 confirmPassword = confirmPassword)
         ) {
+            Log.d(TAG, "Successful validation")
             val user = User(
+                id = "",
                 image = profileImageBitmap!!,
                 name = name,
                 email = email,

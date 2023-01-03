@@ -4,7 +4,15 @@ import com.example.mychat.domain.models.AuthData
 import com.example.mychat.domain.models.User
 
 interface FireBaseUserStorage {
-    fun userRegistration(user: User)
+    suspend fun userRegistration(user: User): User?
 
     suspend fun checkUserExistAuthorization(authData: AuthData): Boolean
+
+    suspend fun findUser(authData: AuthData): User?
+
+    suspend fun findUserById(userId: String): User?
+
+    suspend fun updateToken(userId: String)
+
+    suspend fun deleteUserFieldById(userId: String, fieldName: String): Boolean
 }
