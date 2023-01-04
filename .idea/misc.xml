@@ -8,9 +8,11 @@
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/drawable/background_input.xml" value="0.347" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/activity_main.xml" value="0.35260416666666666" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/fragment_chat.xml" value="0.36666666666666664" />
+        <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/fragment_select_user.xml" value="0.36666666666666664" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/fragment_sign_up.xml" value="0.33" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/fragment_sing_in.xml" value="0.35260416666666666" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/fragment_user.xml" value="0.6641651031894934" />
+        <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/item_container_user.xml" value="0.5851239669421487" />
       </map>
     </option>
   </component>

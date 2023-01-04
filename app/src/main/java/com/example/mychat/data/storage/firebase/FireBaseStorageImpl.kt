@@ -13,7 +13,7 @@ import com.example.mychat.data.storage.StorageConstants.KEY_PASSWORD
 import com.example.mychat.data.storage.StorageConstants.KEY_USER_ID
 import com.example.mychat.domain.models.AuthData
 import com.example.mychat.domain.models.User
-import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessaging
@@ -25,32 +25,32 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
     val TAG = "FIREBASE_STORAGE"
 
     override suspend fun userRegistration(user: User): User? {
-        return suspendCoroutine{
-        val userImageEncoded: String = encodeImage(user.image)
+        return suspendCoroutine {
+            val userImageEncoded: String = encodeImage(user.image)
 
-        val userHashMap = hashMapOf(
-            KEY_IMAGE to userImageEncoded,
-            KEY_NAME to user.name,
-            KEY_EMAIL to user.email,
-            KEY_PASSWORD to user.password,
-        )
-        firestoreDb.collection(KEY_COLLECTION_USERS)
-            .add(userHashMap)
-            .addOnSuccessListener { documentReference ->
-                Log.d(TAG, "User added with ID: ${documentReference.id}")
-                val newUser = User(
-                    id = documentReference.id,
-                    name = user.name,
-                    image = user.image,
-                    email = user.email,
-                    password = user.password
-                )
-                it.resume(newUser)
-            }
-            .addOnFailureListener { e ->
-                Log.d(TAG, "User add failure: ${e.message}")
-                it.resume(null)
-            }
+            val userHashMap = hashMapOf(
+                KEY_IMAGE to userImageEncoded,
+                KEY_NAME to user.name,
+                KEY_EMAIL to user.email,
+                KEY_PASSWORD to user.password,
+            )
+            firestoreDb.collection(KEY_COLLECTION_USERS)
+                .add(userHashMap)
+                .addOnSuccessListener { documentReference ->
+                    Log.d(TAG, "User added with ID: ${documentReference.id}")
+                    val newUser = User(
+                        id = documentReference.id,
+                        name = user.name,
+                        image = user.image,
+                        email = user.email,
+                        password = user.password
+                    )
+                    it.resume(newUser)
+                }
+                .addOnFailureListener { e ->
+                    Log.d(TAG, "User add failure: ${e.message}")
+                    it.resume(null)
+                }
         }
     }
 
@@ -101,6 +101,7 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                 }
         }
     }
+
     override suspend fun findUserById(userId: String): User? {
         return suspendCoroutine {
             firestoreDb.collection(KEY_COLLECTION_USERS)
@@ -108,21 +109,7 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                 .get()
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful && task.result.exists()) {
-                        val id = task.result.get(KEY_USER_ID) as String
-                        val name = task.result.get(KEY_NAME) as String
-                        val imageStr = task.result.get(KEY_IMAGE) as String
-                        val email = task.result.get(KEY_EMAIL) as String
-                        val password = task.result.get(KEY_PASSWORD) as String
-                        val bytes = Base64.decode(imageStr, Base64.DEFAULT)
-                        val image: Bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-
-                        val user = User(
-                            id = id,
-                            image = image,
-                            name = name,
-                            email = email,
-                            password = password
-                        )
+                        val user = getUserFromSnapShot(task.result)
                         it.resume(user)
                     } else {
                         it.resume(null)
@@ -151,6 +138,25 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         }
     }
 
+    override suspend fun getAllUsers(): List<User>? {
+        return suspendCoroutine {
+            val list: MutableList<User> = mutableListOf()
+            val documentReference = firestoreDb.collection(KEY_COLLECTION_USERS)
+
+            documentReference.get()
+                .addOnSuccessListener { task ->
+                    for (userSnapShot in task.documents) {
+                        val user = getUserFromSnapShot(userSnapShot)
+                        list.add(user)
+                    }
+                    it.resume(list.toList())
+                }
+                .addOnFailureListener { _ ->
+                    it.resume(null)
+                }
+        }
+    }
+
     private fun encodeImage(bitmap: Bitmap): String {
         val previewWidth: Int = 150
         val previewHeight: Int = bitmap.height * previewWidth / bitmap.width
@@ -159,5 +165,23 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         previewBitmap.compress(Bitmap.CompressFormat.JPEG, 50, bao)
         val bytes = bao.toByteArray()
         return Base64.encodeToString(bytes, Base64.DEFAULT)
+    }
+
+    private fun getUserFromSnapShot(snapshot: DocumentSnapshot): User {
+        val id = snapshot.id as String
+        val name = snapshot.get(KEY_NAME) as String
+        val imageStr = snapshot.get(KEY_IMAGE) as String
+        val email = snapshot.get(KEY_EMAIL) as String
+        val password = snapshot.get(KEY_PASSWORD) as String
+        val bytes = Base64.decode(imageStr, Base64.DEFAULT)
+        val image: Bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+
+        return User(
+            id = id,
+            image = image,
+            name = name,
+            email = email,
+            password = password
+        )
     }
 }

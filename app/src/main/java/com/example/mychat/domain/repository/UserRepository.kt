@@ -7,11 +7,15 @@ import kotlinx.coroutines.flow.asSharedFlow
 
 interface UserRepository {
 
+    fun observeUserListResult(): SharedFlow<ResultData<List<User>>>
+
     fun observeSignOutResult(): SharedFlow<ResultData<Boolean>>
 
     fun observeAuthResult(): SharedFlow<ResultData<User>>
 
     fun observeRegistration(): SharedFlow<ResultData<User>>
+
+    fun uploadUserList()
 
     fun signOut()
 

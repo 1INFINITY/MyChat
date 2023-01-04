@@ -34,6 +34,9 @@ android {
                 "-Xjvm-default=all"
         ]
     }
+    buildFeatures {
+        viewBinding = true
+    }
 }
 
 dependencies {
@@ -61,6 +64,9 @@ dependencies {
     // Firebase
     implementation 'com.google.firebase:firebase-messaging-ktx:23.1.1'
     implementation 'com.google.firebase:firebase-firestore-ktx:24.4.1'
+
+    // RecyclerView
+    implementation 'androidx.recyclerview:recyclerview:1.2.1'
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.4'

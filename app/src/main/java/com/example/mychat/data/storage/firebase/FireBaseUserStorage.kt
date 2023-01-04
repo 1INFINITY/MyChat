@@ -15,4 +15,6 @@ interface FireBaseUserStorage {
     suspend fun updateToken(userId: String)
 
     suspend fun deleteUserFieldById(userId: String, fieldName: String): Boolean
+
+    suspend fun getAllUsers(): List<User>?
 }

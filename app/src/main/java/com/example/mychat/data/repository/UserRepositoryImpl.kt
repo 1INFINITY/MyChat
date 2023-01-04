@@ -10,6 +10,7 @@ import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -23,6 +24,9 @@ class UserRepositoryImpl(
 
     private val appScope: CoroutineScope = GlobalScope
 
+    private val userListResult = MutableSharedFlow<ResultData<List<User>>>()
+    override fun observeUserListResult() = userListResult.asSharedFlow()
+
     private val signOutResult = MutableSharedFlow<ResultData<Boolean>>()
     override fun observeSignOutResult() = signOutResult.asSharedFlow()
 
@@ -31,6 +35,20 @@ class UserRepositoryImpl(
 
     private val registrationResult = MutableSharedFlow<ResultData<User>>()
     override fun observeRegistration() = registrationResult.asSharedFlow()
+
+    override fun uploadUserList() {
+        appScope.launch {
+            userListResult.emit(ResultData.loading(null))
+
+            val result: List<User>? = firebaseStorage.getAllUsers()
+
+            if (result != null) {
+                userListResult.emit(ResultData.success(result))
+            } else {
+                userListResult.emit(ResultData.failure("Something goes wrong"))
+            }
+        }
+    }
 
     override fun signOut() {
         appScope.launch {
