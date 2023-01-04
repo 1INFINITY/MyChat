@@ -121,7 +121,9 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
     override suspend fun updateToken(userId: String) {
         val documentReference = firestoreDb.collection(KEY_COLLECTION_USERS).document(userId)
         val token = FirebaseMessaging.getInstance().token
-        documentReference.update(KEY_FCM_TOKEN, token)
+        documentReference.update(KEY_FCM_TOKEN, token).addOnFailureListener() {
+            task -> task.message
+        }
     }
 
     override suspend fun deleteUserFieldById(userId: String, fieldName: String): Boolean {

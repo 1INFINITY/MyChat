@@ -5,6 +5,8 @@ import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatImageView
 import androidx.lifecycle.Lifecycle
@@ -14,6 +16,8 @@ import com.example.mychat.R
 import com.example.mychat.data.repository.UserRepositoryImpl
 import com.example.mychat.data.storage.firebase.FireBaseStorageImpl
 import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorageImpl
+import com.example.mychat.databinding.FragmentSelectUserBinding
+import com.example.mychat.databinding.FragmentUserBinding
 import com.example.mychat.domain.repository.UserRepository
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.firebase.firestore.ktx.firestore
@@ -22,6 +26,7 @@ import kotlinx.coroutines.launch
 
 class UserFragment : Fragment() {
 
+    private lateinit var binding: FragmentUserBinding
     lateinit var repository: UserRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,22 +48,21 @@ class UserFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?,
     ): View? {
-        return inflater.inflate(R.layout.fragment_user, container, false)
+        binding = FragmentUserBinding.inflate(inflater, container, false)
+        return binding.root
     }
 
     override fun onStart() {
         super.onStart()
-
-        val imageSingOut = requireView().findViewById<AppCompatImageView>(R.id.image_sign_out)
-        val imageProfile = requireView().findViewById<AppCompatImageView>(R.id.image_profile)
-        val textName = requireView().findViewById<TextView>(R.id.text_name)
-
         val user = repository.getCachedUser()
 
-        textName.text = user.name
-        imageProfile.setImageBitmap(user.image)
+        binding.textName.text = user.name
+        binding.imageProfile.setImageBitmap(user.image)
 
-        imageSingOut.setOnClickListener {
+        binding.floatingButtonNewChat.setOnClickListener {
+            switchPage(SelectUserFragment())
+        }
+        binding.imageSignOut.setOnClickListener {
             repository.signOut()
             switchPage(SingInFragment())
         }
@@ -68,5 +72,14 @@ class UserFragment : Fragment() {
             .replace(this.id, fragment)
             .addToBackStack(null)
             .commit()
+    }
+    private fun loading(isLoading: Boolean) {
+        if (isLoading) {
+            binding.progressBar.visibility = View.VISIBLE
+            binding.textError.visibility = View.INVISIBLE
+        } else {
+            binding.progressBar.visibility = View.INVISIBLE
+            binding.textError.visibility = View.VISIBLE
+        }
     }
 }

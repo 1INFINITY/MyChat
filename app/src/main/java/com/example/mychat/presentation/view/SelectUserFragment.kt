@@ -71,9 +71,24 @@ class SelectUserFragment : Fragment() {
 
     override fun onStart() {
         super.onStart()
-        val manager = LinearLayoutManager(requireContext())
-        binding.recyclerViewUsers.layoutManager = manager
+
+        binding.imageBack.setOnClickListener {
+            switchPage()
+        }
+
         binding.recyclerViewUsers.adapter = adapter
         repository.uploadUserList()
+    }
+    private fun loading(isLoading: Boolean) {
+        if (isLoading) {
+            binding.progressBar.visibility = View.VISIBLE
+            binding.textError.visibility = View.INVISIBLE
+        } else {
+            binding.progressBar.visibility = View.INVISIBLE
+            binding.textError.visibility = View.VISIBLE
+        }
+    }
+    private fun switchPage(){
+        requireActivity().supportFragmentManager.popBackStack()
     }
 }
