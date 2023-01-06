@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/image_profile"
+        android:layout_width="25dp"
+        android:layout_height="25dp"
+        android:background="@drawable/background_image"
+        android:scaleType="centerCrop"
+        app:layout_constraintBottom_toBottomOf="@id/text_message"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/text_message"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:background="@drawable/background_received_message"
+        android:padding="12dp"
+        android:textColor="@color/white"
+        android:textSize="13sp"
+        app:layout_constraintStart_toEndOf="@id/image_profile"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintWidth_percent="0.75" />
+
+    <TextView
+        android:id="@+id/text_date_time"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:textColor="@color/secondary_text"
+        android:textSize="10sp"
+        app:layout_constraintStart_toStartOf="@id/text_message"
+        app:layout_constraintTop_toBottomOf="@+id/text_message" />
+</androidx.constraintlayout.widget.ConstraintLayout>

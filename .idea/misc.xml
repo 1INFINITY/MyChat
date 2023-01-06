@@ -3,10 +3,14 @@
   <component name="DesignSurface">
     <option name="filePathToZoomLevelMap">
       <map>
+        <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/drawable/background_chat_input.xml" value="0.2" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/drawable/background_content_bottom.xml" value="0.2" />
+        <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/drawable/background_content_top.xml" value="0.2" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/drawable/background_icon.xml" value="0.183" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/drawable/background_image.xml" value="0.347" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/drawable/background_input.xml" value="0.347" />
+        <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/drawable/background_received.xml" value="0.235" />
+        <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/drawable/background_sent_message.xml" value="0.235" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/drawable/ic_add.xml" value="0.2" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/drawable/ic_back.xml" value="0.2" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/activity_main.xml" value="0.35260416666666666" />
@@ -15,6 +19,8 @@
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/fragment_sign_up.xml" value="0.33" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/fragment_sing_in.xml" value="0.35260416666666666" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/fragment_user.xml" value="0.33" />
+        <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/item_container_received.xml" value="0.365625" />
+        <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/item_container_sent_message.xml" value="0.33" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/item_container_user.xml" value="0.5851239669421487" />
       </map>
     </option>
