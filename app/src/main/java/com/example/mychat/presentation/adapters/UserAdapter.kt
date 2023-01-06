@@ -5,10 +5,11 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.example.mychat.databinding.ItemContainerUserBinding
 import com.example.mychat.domain.models.User
+import com.example.mychat.presentation.listeners.UserListener
 
-class UserAdapter : RecyclerView.Adapter<UserAdapter.UserViewHolder>() {
+class UserAdapter(private val userListener: UserListener ) : RecyclerView.Adapter<UserAdapter.UserViewHolder>() {
 
-    var data : List<User> = emptyList()
+    var users : List<User> = emptyList()
         set(newValue){
             field = newValue
             notifyDataSetChanged()
@@ -16,8 +17,7 @@ class UserAdapter : RecyclerView.Adapter<UserAdapter.UserViewHolder>() {
 
     class UserViewHolder(val binding: ItemContainerUserBinding): RecyclerView.ViewHolder(binding.root)
 
-
-    override fun getItemCount(): Int = data.size
+    override fun getItemCount(): Int = users.size
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): UserViewHolder {
         val inflater = LayoutInflater.from(parent.context)
@@ -27,7 +27,7 @@ class UserAdapter : RecyclerView.Adapter<UserAdapter.UserViewHolder>() {
     }
 
     override fun onBindViewHolder(holder: UserViewHolder, position: Int) {
-        val person = data[position]
+        val person = users[position]
         val context = holder.itemView.context
 
         with(holder.binding) {
@@ -35,7 +35,7 @@ class UserAdapter : RecyclerView.Adapter<UserAdapter.UserViewHolder>() {
             textName.text = person.name
             textEmail.text = person.email
             imageProfile.setImageBitmap(person.image)
-
+            root.setOnClickListener { userListener.onUserClicked(person)}
         }
     }
 

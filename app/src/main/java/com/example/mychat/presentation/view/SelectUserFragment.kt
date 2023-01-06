@@ -17,9 +17,11 @@ import com.example.mychat.data.storage.firebase.FireBaseStorageImpl
 import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorageImpl
 import com.example.mychat.databinding.FragmentSelectUserBinding
 import com.example.mychat.databinding.ItemContainerUserBinding
+import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
 import com.example.mychat.presentation.adapters.UserAdapter
+import com.example.mychat.presentation.listeners.UserListener
 import com.example.mychat.presentation.viewmodels.SingUpModelFactory
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
@@ -27,7 +29,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 
-class SelectUserFragment : Fragment() {
+class SelectUserFragment : Fragment(), UserListener {
 
     private lateinit var binding: FragmentSelectUserBinding
     private lateinit var adapter: UserAdapter
@@ -39,7 +41,7 @@ class SelectUserFragment : Fragment() {
         val storage = FireBaseStorageImpl(firestoreDb = db)
         val sharedPrefs = SharedPreferencesStorageImpl(appContext = requireActivity().applicationContext)
         repository = UserRepositoryImpl(firebaseStorage = storage, sharedPrefsStorage = sharedPrefs)
-        adapter = UserAdapter()
+        adapter = UserAdapter(this)
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -48,7 +50,7 @@ class SelectUserFragment : Fragment() {
                         is ResultData.Success -> {
                             Toast.makeText(activity, "Successful list upload", Toast.LENGTH_SHORT)
                                 .show()
-                            adapter.data = state.value
+                            adapter.users = state.value
                         }
                         is ResultData.Loading -> {
                         }
@@ -90,5 +92,12 @@ class SelectUserFragment : Fragment() {
     }
     private fun switchPage(){
         requireActivity().supportFragmentManager.popBackStack()
+    }
+
+    override fun onUserClicked(user: User) {
+        requireActivity().supportFragmentManager.beginTransaction()
+            .replace(this.id, ChatFragment(user))
+            .addToBackStack(null)
+            .commit()
     }
 }
