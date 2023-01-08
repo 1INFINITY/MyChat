@@ -70,6 +70,7 @@
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="12dp"
+        android:background="@color/primary"
         app:layout_constraintTop_toBottomOf="@+id/image_back" />
 
     <androidx.recyclerview.widget.RecyclerView
@@ -81,6 +82,7 @@
         android:overScrollMode="never"
         android:padding="20dp"
         android:visibility="gone"
+        app:stackFromEnd="true"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintBottom_toBottomOf="@id/view_back_ground"
         app:layout_constraintTop_toBottomOf="@id/view_supporter" />

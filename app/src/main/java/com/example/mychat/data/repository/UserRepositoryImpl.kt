@@ -5,16 +5,14 @@ import com.example.mychat.data.storage.StorageConstants.KEY_FCM_TOKEN
 import com.example.mychat.data.storage.firebase.FireBaseUserStorage
 import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorage
 import com.example.mychat.domain.models.AuthData
+import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class UserRepositoryImpl(
@@ -35,6 +33,9 @@ class UserRepositoryImpl(
 
     private val registrationResult = MutableSharedFlow<ResultData<User>>()
     override fun observeRegistration() = registrationResult.asSharedFlow()
+
+    private val messagesResult = MutableSharedFlow<ResultData<List<ChatMessage>>>()
+    override fun observeMessages(): SharedFlow<ResultData<List<ChatMessage>>> = messagesResult.asSharedFlow()
 
     override fun uploadUserList() {
         appScope.launch {
@@ -111,14 +112,23 @@ class UserRepositoryImpl(
     override fun getCachedUser(): User {
         val user = sharedPrefsStorage.getUserDetails()
         appScope.launch {
-            if (user.id == ""){
+            if (user.id == "") {
                 Log.d("MyRep", "Failure get cached user")
             } else {
                 Log.d("MyRep", "Success get cached user")
-                firebaseStorage.updateToken(user.id)
+                //firebaseStorage.updateToken(user.id)
             }
         }
         return user
     }
 
+    override fun sendMessage(chatMessage: ChatMessage) {
+        appScope.launch {
+            val result: Boolean = firebaseStorage.sendMessage(chatMessage)
+        }
+    }
+
+    override fun listenMessages(sender: User, receiver: User) = callbackFlow<ResultData<List<ChatMessage>>> {
+        firebaseStorage.fetchNewMessages(sender = sender, receiver = receiver, this)
+    }
 }

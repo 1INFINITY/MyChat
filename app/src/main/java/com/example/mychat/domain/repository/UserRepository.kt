@@ -1,7 +1,10 @@
 package com.example.mychat.domain.repository
 
 import com.example.mychat.domain.models.AuthData
+import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
@@ -15,6 +18,8 @@ interface UserRepository {
 
     fun observeRegistration(): SharedFlow<ResultData<User>>
 
+    fun observeMessages(): SharedFlow<ResultData<List<ChatMessage>>>
+
     fun uploadUserList()
 
     fun signOut()
@@ -24,4 +29,8 @@ interface UserRepository {
     fun userAuthorization(authData: AuthData)
 
     fun getCachedUser(): User
+
+    fun sendMessage(chatMessage: ChatMessage)
+
+    fun listenMessages(sender: User, receiver: User): Flow<ResultData<List<ChatMessage>>>
 }

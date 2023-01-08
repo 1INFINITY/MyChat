@@ -2,22 +2,37 @@ package com.example.mychat.data.storage.firebase
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.text.format.DateUtils
 import android.util.Base64
 import android.util.Log
+import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_CHAT
 import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_USERS
 import com.example.mychat.data.storage.StorageConstants.KEY_EMAIL
 import com.example.mychat.data.storage.StorageConstants.KEY_FCM_TOKEN
 import com.example.mychat.data.storage.StorageConstants.KEY_IMAGE
+import com.example.mychat.data.storage.StorageConstants.KEY_MESSAGE
 import com.example.mychat.data.storage.StorageConstants.KEY_NAME
 import com.example.mychat.data.storage.StorageConstants.KEY_PASSWORD
+import com.example.mychat.data.storage.StorageConstants.KEY_RECEIVER_ID
+import com.example.mychat.data.storage.StorageConstants.KEY_SENDER_ID
+import com.example.mychat.data.storage.StorageConstants.KEY_TIMESTAMP
 import com.example.mychat.data.storage.StorageConstants.KEY_USER_ID
 import com.example.mychat.domain.models.AuthData
+import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
-import com.google.firebase.firestore.DocumentSnapshot
-import com.google.firebase.firestore.FieldValue
-import com.google.firebase.firestore.FirebaseFirestore
+import com.example.mychat.domain.repository.ResultData
+import com.google.firebase.firestore.*
 import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.channels.ProducerScope
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.channels.trySendBlocking
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.ByteArrayOutputStream
+import java.text.SimpleDateFormat
+import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -121,8 +136,8 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
     override suspend fun updateToken(userId: String) {
         val documentReference = firestoreDb.collection(KEY_COLLECTION_USERS).document(userId)
         val token = FirebaseMessaging.getInstance().token
-        documentReference.update(KEY_FCM_TOKEN, token).addOnFailureListener() {
-            task -> task.message
+        documentReference.update(KEY_FCM_TOKEN, token).addOnFailureListener() { task ->
+            task.message
         }
     }
 
@@ -158,6 +173,104 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                 }
         }
     }
+
+    override suspend fun sendMessage(chatMessage: ChatMessage): Boolean {
+        return suspendCoroutine {
+            val documentReference = firestoreDb.collection(KEY_COLLECTION_CHAT)
+            val messageHashMap = hashMapOf(
+                KEY_SENDER_ID to chatMessage.senderId,
+                KEY_RECEIVER_ID to chatMessage.receiverId,
+                KEY_MESSAGE to chatMessage.message,
+                KEY_TIMESTAMP to chatMessage.dataTime,
+            )
+            documentReference.add(messageHashMap)
+                .addOnSuccessListener { documentReference ->
+                    Log.d(TAG, "Message added with ID: ${documentReference.id}")
+                    it.resume(true)
+                }
+                .addOnFailureListener { e ->
+                    Log.d(TAG, "Message add failure: ${e.message}")
+                    it.resume(false)
+                }
+        }
+    }
+
+//    override suspend fun listenMessages(
+//        sender: User,
+//        receiver: User,
+//        lce: FlowCollector<ResultData<List<ChatMessage>>>,
+//    ) {
+//        val responseSenderMessages = firestoreDb.collection(KEY_COLLECTION_CHAT)
+//            .whereEqualTo(KEY_SENDER_ID, sender.id)
+//            .whereEqualTo(KEY_RECEIVER_ID, receiver.id)
+//            .awaitRealtime()
+////        val responseSenderMessages = firestoreDb.collection(KEY_COLLECTION_CHAT)
+////            .whereEqualTo(KEY_RECEIVER_ID, sender.id)
+////            .whereEqualTo(KEY_SENDER_ID, receiver.id)
+////            .awaitRealtime()
+//        if (responseSenderMessages.error == null) {
+//            Log.d("ChatFrag", "Success")
+//            var messageList: MutableList<ChatMessage> = mutableListOf()
+//            responseSenderMessages.packet?.documentChanges?.map { doc ->
+//                val message: String = doc.document.get(KEY_MESSAGE) as String
+//                val dateTime: String = doc.document.get(KEY_TIMESTAMP) as String
+//                val chatMessage = ChatMessage(senderId = sender.id,
+//                    receiverId = receiver.id,
+//                    message = message,
+//                    dataTime = dateTime)
+//                Log.d("ChatFrag", "Added message with sender${sender.id}")
+//                messageList.add(chatMessage)
+//            }
+//            lce.emit(ResultData.success(messageList))
+//        } else {
+//            lce.emit(
+//                ResultData.failure("Error retrieving user save_collection: ${responseSenderMessages.error?.localizedMessage}"))
+//            Log.d("ChatFrag", "UnSuccess")
+//        }
+//
+//    }
+//
+//    data class QueryResponse(val packet: QuerySnapshot?, val error: FirebaseFirestoreException?)
+//
+//    suspend fun Query.awaitRealtime() = suspendCancellableCoroutine<QueryResponse> { continuation ->
+//        addSnapshotListener { value, error ->
+//            if (error == null && continuation.isActive)
+//                continuation.resume(QueryResponse(value, null))
+//            else if (error != null && continuation.isActive)
+//                continuation.resume(QueryResponse(null, error))
+//        }
+//    }
+
+    override suspend fun fetchNewMessages(
+        sender: User,
+        receiver: User,
+        flow: ProducerScope<ResultData<List<ChatMessage>>>
+    ) {
+        val registration = firestoreDb.collection(KEY_COLLECTION_CHAT)
+            .whereEqualTo(KEY_SENDER_ID, sender.id)
+            .whereEqualTo(KEY_RECEIVER_ID, receiver.id)
+            .addSnapshotListener { value, error ->
+                if (error == null) {
+                    val messageList: MutableList<ChatMessage> = mutableListOf()
+                    value?.documentChanges?.map { doc ->
+                        val message: String = doc.document.get(KEY_MESSAGE) as String
+                        val dateTime: String = doc.document.get(KEY_TIMESTAMP) as String
+                        val chatMessage = ChatMessage(senderId = sender.id,
+                            receiverId = receiver.id,
+                            message = message,
+                            dataTime = dateTime)
+                        messageList.add(chatMessage)
+                    }
+                    flow.trySendBlocking(ResultData.success(messageList.toList()))
+                } else {
+                    flow.trySendBlocking(ResultData.failure(error.toString()))
+                }
+            }
+        flow.awaitClose {
+            registration.remove()
+        }
+    }
+
 
     private fun encodeImage(bitmap: Bitmap): String {
         val previewWidth: Int = 150
