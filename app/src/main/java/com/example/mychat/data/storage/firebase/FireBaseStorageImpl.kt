@@ -246,7 +246,15 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         receiver: User,
         flow: ProducerScope<ResultData<List<ChatMessage>>>
     ) {
-        val registration = firestoreDb.collection(KEY_COLLECTION_CHAT)
+        val registrationSelfMessages = newMessagesListener(sender = sender, receiver = receiver, flow = flow)
+        val registrationReceiverMessages = newMessagesListener(sender = receiver, receiver = sender, flow = flow)
+        flow.awaitClose {
+            registrationSelfMessages.remove()
+            registrationReceiverMessages.remove()
+        }
+    }
+    private fun newMessagesListener(sender: User, receiver: User, flow: ProducerScope<ResultData<List<ChatMessage>>>): ListenerRegistration {
+        return firestoreDb.collection(KEY_COLLECTION_CHAT)
             .whereEqualTo(KEY_SENDER_ID, sender.id)
             .whereEqualTo(KEY_RECEIVER_ID, receiver.id)
             .addSnapshotListener { value, error ->
@@ -266,11 +274,7 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                     flow.trySendBlocking(ResultData.failure(error.toString()))
                 }
             }
-        flow.awaitClose {
-            registration.remove()
-        }
     }
-
 
     private fun encodeImage(bitmap: Bitmap): String {
         val previewWidth: Int = 150
