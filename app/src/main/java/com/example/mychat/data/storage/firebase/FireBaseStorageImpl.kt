@@ -181,11 +181,11 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                 KEY_SENDER_ID to chatMessage.senderId,
                 KEY_RECEIVER_ID to chatMessage.receiverId,
                 KEY_MESSAGE to chatMessage.message,
-                KEY_TIMESTAMP to chatMessage.dataTime,
+                KEY_TIMESTAMP to chatMessage.date,
             )
             documentReference.add(messageHashMap)
-                .addOnSuccessListener { documentReference ->
-                    Log.d(TAG, "Message added with ID: ${documentReference.id}")
+                .addOnSuccessListener {  doc ->
+                    Log.d(TAG, "Message added with ID: ${doc.id}")
                     it.resume(true)
                 }
                 .addOnFailureListener { e ->
@@ -194,52 +194,6 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                 }
         }
     }
-
-//    override suspend fun listenMessages(
-//        sender: User,
-//        receiver: User,
-//        lce: FlowCollector<ResultData<List<ChatMessage>>>,
-//    ) {
-//        val responseSenderMessages = firestoreDb.collection(KEY_COLLECTION_CHAT)
-//            .whereEqualTo(KEY_SENDER_ID, sender.id)
-//            .whereEqualTo(KEY_RECEIVER_ID, receiver.id)
-//            .awaitRealtime()
-////        val responseSenderMessages = firestoreDb.collection(KEY_COLLECTION_CHAT)
-////            .whereEqualTo(KEY_RECEIVER_ID, sender.id)
-////            .whereEqualTo(KEY_SENDER_ID, receiver.id)
-////            .awaitRealtime()
-//        if (responseSenderMessages.error == null) {
-//            Log.d("ChatFrag", "Success")
-//            var messageList: MutableList<ChatMessage> = mutableListOf()
-//            responseSenderMessages.packet?.documentChanges?.map { doc ->
-//                val message: String = doc.document.get(KEY_MESSAGE) as String
-//                val dateTime: String = doc.document.get(KEY_TIMESTAMP) as String
-//                val chatMessage = ChatMessage(senderId = sender.id,
-//                    receiverId = receiver.id,
-//                    message = message,
-//                    dataTime = dateTime)
-//                Log.d("ChatFrag", "Added message with sender${sender.id}")
-//                messageList.add(chatMessage)
-//            }
-//            lce.emit(ResultData.success(messageList))
-//        } else {
-//            lce.emit(
-//                ResultData.failure("Error retrieving user save_collection: ${responseSenderMessages.error?.localizedMessage}"))
-//            Log.d("ChatFrag", "UnSuccess")
-//        }
-//
-//    }
-//
-//    data class QueryResponse(val packet: QuerySnapshot?, val error: FirebaseFirestoreException?)
-//
-//    suspend fun Query.awaitRealtime() = suspendCancellableCoroutine<QueryResponse> { continuation ->
-//        addSnapshotListener { value, error ->
-//            if (error == null && continuation.isActive)
-//                continuation.resume(QueryResponse(value, null))
-//            else if (error != null && continuation.isActive)
-//                continuation.resume(QueryResponse(null, error))
-//        }
-//    }
 
     override suspend fun fetchNewMessages(
         sender: User,
@@ -258,15 +212,16 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
             .whereEqualTo(KEY_SENDER_ID, sender.id)
             .whereEqualTo(KEY_RECEIVER_ID, receiver.id)
             .addSnapshotListener { value, error ->
-                if (error == null) {
+                if (error == null && !value!!.isEmpty) {
                     val messageList: MutableList<ChatMessage> = mutableListOf()
                     value?.documentChanges?.map { doc ->
-                        val message: String = doc.document.get(KEY_MESSAGE) as String
-                        val dateTime: String = doc.document.get(KEY_TIMESTAMP) as String
+                        val message: String = doc.document.getString(KEY_MESSAGE)!!
+                        val date: Date = doc.document.getDate(KEY_TIMESTAMP)!!
+
                         val chatMessage = ChatMessage(senderId = sender.id,
                             receiverId = receiver.id,
                             message = message,
-                            dataTime = dateTime)
+                            date = date)
                         messageList.add(chatMessage)
                     }
                     flow.trySendBlocking(ResultData.success(messageList.toList()))

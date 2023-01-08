@@ -7,6 +7,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.mychat.databinding.ItemContainerReceivedBinding
 import com.example.mychat.databinding.ItemContainerSentMessageBinding
 import com.example.mychat.domain.models.ChatMessage
+import java.text.SimpleDateFormat
+import java.util.*
 
 class ChatAdapter(
     private val receiverProfileImage: Bitmap,
@@ -24,7 +26,10 @@ class ChatAdapter(
         RecyclerView.ViewHolder(binding.root) {
         fun setData(msg: ChatMessage) {
             binding.textMessage.text = msg.message
-            binding.textDateTime.text = msg.dataTime
+            binding.textDateTime.text = formatDate(msg.date)
+        }
+        private fun formatDate(date: Date): String {
+            return SimpleDateFormat("MMMM dd, yyyy - hh:mm a", Locale.getDefault()).format(date)
         }
     }
 
@@ -32,8 +37,11 @@ class ChatAdapter(
         RecyclerView.ViewHolder(binding.root) {
         fun setData(msg: ChatMessage, profileImage: Bitmap) {
             binding.textMessage.text = msg.message
-            binding.textDateTime.text = msg.dataTime
+            binding.textDateTime.text = formatDate(msg.date)
             binding.imageProfile.setImageBitmap(profileImage)
+        }
+        private fun formatDate(date: Date): String {
+            return SimpleDateFormat("MMMM dd, yyyy - hh:mm a", Locale.getDefault()).format(date)
         }
     }
 

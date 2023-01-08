@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.util.*
 
 class ChatFragment(val userReceiver: User) : Fragment() {
@@ -58,6 +59,7 @@ class ChatFragment(val userReceiver: User) : Fragment() {
                                Log.d("ChatFrag", it.message)
                                 messages.add(it)
                             }
+                            messages.sortBy { it.date }
                             adapter.messages = messages
                             binding.recyclerViewChat.visibility = View.VISIBLE
                         }
@@ -102,9 +104,10 @@ class ChatFragment(val userReceiver: User) : Fragment() {
         val message = ChatMessage(senderId = userSender.id,
             receiverId = userReceiver.id,
             message = messageString,
-            dataTime = Date().toString())
+            date = Date())
         repository.sendMessage(message)
         binding.inputMessage.text = null
     }
+
 
 }
