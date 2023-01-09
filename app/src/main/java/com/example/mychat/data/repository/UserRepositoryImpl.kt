@@ -5,6 +5,7 @@ import com.example.mychat.data.storage.StorageConstants.KEY_FCM_TOKEN
 import com.example.mychat.data.storage.firebase.FireBaseUserStorage
 import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorage
 import com.example.mychat.domain.models.AuthData
+import com.example.mychat.domain.models.Chat
 import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
@@ -130,5 +131,15 @@ class UserRepositoryImpl(
 
     override fun listenMessages(sender: User, receiver: User) = callbackFlow<ResultData<List<ChatMessage>>> {
         firebaseStorage.fetchNewMessages(sender = sender, receiver = receiver, this)
+    }
+
+    override fun createNewChat(users: List<User>) {
+        appScope.launch {
+            firebaseStorage.createNewChat(users)
+        }
+    }
+
+    override fun fetchChats(user: User) = callbackFlow<ResultData<List<Chat>>> {
+        firebaseStorage.fetchChats(user = user, this)
     }
 }

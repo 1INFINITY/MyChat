@@ -19,6 +19,8 @@
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/fragment_sign_up.xml" value="0.33" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/fragment_sing_in.xml" value="0.35260416666666666" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/fragment_user.xml" value="0.33" />
+        <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/item_container_chat.xml" value="0.36666666666666664" />
+        <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/item_container_conversation.xml" value="0.36666666666666664" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/item_container_received.xml" value="0.365625" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/item_container_sent_message.xml" value="0.33" />
         <entry key="..\:/Users/praec/AndroidStudioProjects/MyChat/app/src/main/res/layout/item_container_user.xml" value="0.5851239669421487" />

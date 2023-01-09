@@ -95,6 +95,8 @@ class SelectUserFragment : Fragment(), UserListener {
     }
 
     override fun onUserClicked(user: User) {
+        val mainUser = repository.getCachedUser()
+        repository.createNewChat(listOf(user, mainUser))
         requireActivity().supportFragmentManager.beginTransaction()
             .replace(this.id, ChatFragment(user))
             .addToBackStack(null)

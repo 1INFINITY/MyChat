@@ -16,4 +16,8 @@ object StorageConstants {
     val KEY_RECEIVER_ID = "receiverId"
     val KEY_MESSAGE = "message"
     val KEY_TIMESTAMP = "timestamp"
+
+    val KEY_COLLECTION_CHATS = "chats"
+    val KEY_USERS_ID_ARRAY = "usersIdArray"
+    val KEY_LAST_MESSAGE = "lastMessage"
 }

@@ -1,6 +1,7 @@
 package com.example.mychat.domain.repository
 
 import com.example.mychat.domain.models.AuthData
+import com.example.mychat.domain.models.Chat
 import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
 import kotlinx.coroutines.flow.Flow
@@ -33,4 +34,8 @@ interface UserRepository {
     fun sendMessage(chatMessage: ChatMessage)
 
     fun listenMessages(sender: User, receiver: User): Flow<ResultData<List<ChatMessage>>>
+
+    fun createNewChat(users: List<User>)
+
+    fun fetchChats(user: User): Flow<ResultData<List<Chat>>>
 }

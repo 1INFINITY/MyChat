@@ -1,6 +1,7 @@
 package com.example.mychat.data.storage.firebase
 
 import com.example.mychat.domain.models.AuthData
+import com.example.mychat.domain.models.Chat
 import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
@@ -30,4 +31,7 @@ interface FireBaseUserStorage {
         receiver: User,
         flow: ProducerScope<ResultData<List<ChatMessage>>>
     )
+    suspend fun createNewChat(users: List<User>)
+
+    suspend fun fetchChats(user: User, flow: ProducerScope<ResultData<List<Chat>>>)
 }
