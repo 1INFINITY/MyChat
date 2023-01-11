@@ -187,6 +187,23 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
             )
             documentReference.add(messageHashMap)
                 .addOnSuccessListener { doc ->
+                    // Обновление последнего сообщения чата
+                    val userR = firestoreDb.collection(KEY_COLLECTION_USERS).document(chatMessage.receiverId)
+                    val userS = firestoreDb.collection(KEY_COLLECTION_USERS).document(chatMessage.senderId)
+                    val usersRefs= listOf<DocumentReference>(userR, userS)
+                    val chatsRefs = firestoreDb.collection(KEY_COLLECTION_CHATS)
+                    chatsRefs.whereArrayContains(KEY_USERS_ID_ARRAY, userR).get().addOnSuccessListener {
+                        if (!it.isEmpty) {
+                            val usersRefs =
+                                (it.documents[0].get(KEY_USERS_ID_ARRAY) as ArrayList<DocumentReference>)
+                            if(userS in usersRefs) {
+                                val chatRef = chatsRefs.document(it.documents[0].id)
+                                chatRef.update(KEY_LAST_MESSAGE, chatMessage.message)
+                            }
+                        }
+
+                    }
+                    // Конец блока
                     Log.d(TAG, "Message added with ID: ${doc.id}")
                     it.resume(true)
                 }
