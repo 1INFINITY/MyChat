@@ -19,7 +19,6 @@ class ChatContract {
     data class State(
         val sender: User? = null,
         val chatName: String? = null,
-        val receiverImage: Bitmap? = null,
         val recyclerViewState: RecyclerViewState,
     ) : UiState
 

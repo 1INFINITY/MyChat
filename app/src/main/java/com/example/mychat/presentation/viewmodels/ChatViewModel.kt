@@ -1,13 +1,11 @@
 package com.example.mychat.presentation.viewmodels
 
-import android.graphics.Bitmap
 import androidx.lifecycle.viewModelScope
 import com.example.mychat.domain.models.Chat
 import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
-import com.example.mychat.presentation.view.SingInFragment
 import com.example.mychat.presentation.viewmodels.base.BaseViewModel
 import com.example.mychat.presentation.viewmodels.сontracts.ChatContract
 import kotlinx.coroutines.launch
@@ -28,7 +26,6 @@ class ChatViewModel(
         return ChatContract.State(
             sender = null,
             chatName = "",
-            receiverImage = null,
             recyclerViewState = ChatContract.RecyclerViewState.Idle
         )
     }

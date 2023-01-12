@@ -12,7 +12,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 class ChatAdapter(
-    private val receiverProfileImage: Bitmap,
     private val sender: User,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
@@ -36,10 +35,10 @@ class ChatAdapter(
 
     class ReceivedMessageViewHolder(val binding: ItemContainerReceivedBinding) :
         RecyclerView.ViewHolder(binding.root) {
-        fun setData(msg: ChatMessage, profileImage: Bitmap) {
+        fun setData(msg: ChatMessage) {
             binding.textMessage.text = msg.message
             binding.textDateTime.text = formatDate(msg.date)
-            binding.imageProfile.setImageBitmap(profileImage)
+            binding.imageProfile.setImageBitmap(msg.sender.image)
         }
         private fun formatDate(date: Date): String {
             return SimpleDateFormat("MMMM dd, yyyy - hh:mm a", Locale.getDefault()).format(date)
@@ -72,7 +71,7 @@ class ChatAdapter(
         if (getItemViewType(position) == ViewType.SENT.type) {
             (holder as SentMessageViewHolder).setData(messages[position])
         } else {
-            (holder as ReceivedMessageViewHolder).setData(messages[position], receiverProfileImage)
+            (holder as ReceivedMessageViewHolder).setData(messages[position])
         }
     }
 
