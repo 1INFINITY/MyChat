@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.example.mychat.data.repository.UserRepositoryImpl
@@ -20,24 +21,23 @@ import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
 import com.example.mychat.presentation.adapters.ChatAdapter
+import com.example.mychat.presentation.viewmodels.ChatModelFactory
+import com.example.mychat.presentation.viewmodels.ChatViewModel
+import com.example.mychat.presentation.viewmodels.UserModelFactory
+import com.example.mychat.presentation.viewmodels.UserViewModel
+import com.example.mychat.presentation.viewmodels.сontracts.ChatContract
+import com.example.mychat.presentation.viewmodels.сontracts.UserContract
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
 import java.util.*
 
 class ChatFragment(val chat: Chat) : Fragment() {
 
+    private lateinit var vm: ChatViewModel
     private lateinit var binding: FragmentChatBinding
-    private lateinit var userSender: User
-    private lateinit var userReceiver: User
     private lateinit var adapter: ChatAdapter
-    private lateinit var repository: UserRepository
-    private lateinit var messages: MutableList<ChatMessage>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -45,37 +45,14 @@ class ChatFragment(val chat: Chat) : Fragment() {
         val storage = FireBaseStorageImpl(firestoreDb = db)
         val sharedPrefs =
             SharedPreferencesStorageImpl(appContext = requireActivity().applicationContext)
-        messages = mutableListOf()
-        repository = UserRepositoryImpl(firebaseStorage = storage, sharedPrefsStorage = sharedPrefs)
+        val repository =
+            UserRepositoryImpl(firebaseStorage = storage, sharedPrefsStorage = sharedPrefs)
 
-        userSender = repository.getCachedUser()
-        userReceiver = chat.users.find { it.id != userSender.id } ?: userSender
+        val vmFactory = ChatModelFactory(chat = chat, repository = repository)
+        vm = ViewModelProvider(this, vmFactory)
+            .get(ChatViewModel::class.java)
 
-        adapter = ChatAdapter(userReceiver.image, userSender)
 
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                //repository.observeMessages()
-                repository.listenMessages(chat = chat).collect { state ->
-                    when (state) {
-                        is ResultData.Success -> {
-                            state.value.forEach {
-                               Log.d("ChatFrag", it.message)
-                                messages.add(it)
-                            }
-                            messages.sortBy { it.date }
-                            adapter.messages = messages
-                            binding.recyclerViewChat.visibility = View.VISIBLE
-                        }
-                        is ResultData.Loading -> {
-                        }
-                        is ResultData.Failure -> {
-                            Toast.makeText(activity, state.message, Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-            }
-        }
     }
 
     override fun onCreateView(
@@ -88,31 +65,77 @@ class ChatFragment(val chat: Chat) : Fragment() {
 
     override fun onStart() {
         super.onStart()
-        setListeners()
-        loadReceiverData()
-
-    }
-
-    private fun loadReceiverData() {
-        binding.textName.text = userReceiver.name
-        binding.recyclerViewChat.adapter = adapter
-    }
-
-    private fun setListeners() {
-        binding.imageBack.setOnClickListener { requireActivity().onBackPressed() }
+        binding.imageBack.setOnClickListener { vm.setEvent(ChatContract.Event.OnBackButtonClicked) }
         binding.buttonSend.setOnClickListener { sendMessage() }
+        initObservers()
+    }
+
+    private fun initObservers() {
+        lifecycleScope.launchWhenStarted {
+            vm.uiState.collectLatest {
+                loadReceiverData(uiState = it)
+                when (it.recyclerViewState) {
+                    is ChatContract.RecyclerViewState.Idle -> {
+                        loading(false)
+                    }
+                    is ChatContract.RecyclerViewState.Loading -> {
+                        loading(true)
+                    }
+                    is ChatContract.RecyclerViewState.Success -> {
+                        loading(false)
+                        adapter.messages = it.recyclerViewState.chatMessages
+                    }
+                }
+            }
+        }
+
+        lifecycleScope.launchWhenStarted {
+            vm.effect.collect {
+                when (it) {
+                    is ChatContract.Effect.ShowToast -> {
+                        Toast.makeText(requireActivity(), it.message, Toast.LENGTH_SHORT).show()
+                    }
+                    is ChatContract.Effect.ChangeFragment -> {
+                        switchPage(it.fragment)
+                    }
+                }
+            }
+        }
+
+    }
+
+    private fun loading(isLoading: Boolean) {
+        if (isLoading) {
+            binding.recyclerViewChat.visibility = View.INVISIBLE
+            binding.progressBar.visibility = View.VISIBLE
+        } else {
+            binding.recyclerViewChat.visibility = View.VISIBLE
+            binding.progressBar.visibility = View.INVISIBLE
+        }
+    }
+
+    private fun loadReceiverData(uiState: ChatContract.State) {
+        binding.textName.text = uiState.chatName
+        uiState.sender?.let {
+            adapter = ChatAdapter(uiState.receiverImage ?: it.image, it)
+            binding.recyclerViewChat.adapter = adapter
+        }
     }
 
     private fun sendMessage() {
-        val messageString: String = binding.inputMessage.text.toString()
-        val message = ChatMessage(
-            chat = chat,
-            sender = userSender,
-            message = messageString,
-            date = Date())
-        repository.sendMessage(message)
+        val message: String = binding.inputMessage.text.toString()
+        vm.setEvent(ChatContract.Event.MessageSent(message = message))
         binding.inputMessage.text = null
     }
 
-
+    private fun switchPage(fragment: Fragment?) {
+        if (fragment == null) {
+            requireActivity().supportFragmentManager.popBackStack()
+            return
+        }
+        requireActivity().supportFragmentManager.beginTransaction()
+            .replace(this.id, fragment)
+            .addToBackStack(null)
+            .commit()
+    }
 }

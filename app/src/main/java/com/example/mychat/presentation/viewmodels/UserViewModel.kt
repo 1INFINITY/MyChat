@@ -15,6 +15,8 @@ import kotlinx.coroutines.launch
 class UserViewModel(private val repository: UserRepository) :
     BaseViewModel<UserContract.Event, UserContract.State, UserContract.Effect>() {
 
+    private var chats: MutableList<Chat> = mutableListOf()
+    private lateinit var user: User
     /**
      * Create initial State of Views
      */
@@ -45,9 +47,6 @@ class UserViewModel(private val repository: UserRepository) :
             }
         }
     }
-
-    private var chats: MutableList<Chat> = mutableListOf()
-    private lateinit var user: User
 
     init {
         viewModelScope.launch {
@@ -88,7 +87,11 @@ class UserViewModel(private val repository: UserRepository) :
         }
     }
 
-    fun tryOpenChat(chat: Chat) {
+    fun getMainUser(): User {
+        return repository.getCachedUser()
+    }
+
+    private fun tryOpenChat(chat: Chat) {
         viewModelScope.launch {
             repository.openChat(chat).collect { state ->
                 when (state) {
@@ -107,10 +110,6 @@ class UserViewModel(private val repository: UserRepository) :
 
             }
         }
-    }
-
-    fun getMainUser(): User {
-        return repository.getCachedUser()
     }
 
     private fun chatsUpdate(updates: List<Chat>) {
