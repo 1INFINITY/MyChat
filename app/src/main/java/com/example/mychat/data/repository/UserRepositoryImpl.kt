@@ -36,7 +36,8 @@ class UserRepositoryImpl(
     override fun observeRegistration() = registrationResult.asSharedFlow()
 
     private val messagesResult = MutableSharedFlow<ResultData<List<ChatMessage>>>()
-    override fun observeMessages(): SharedFlow<ResultData<List<ChatMessage>>> = messagesResult.asSharedFlow()
+    override fun observeMessages(): SharedFlow<ResultData<List<ChatMessage>>> =
+        messagesResult.asSharedFlow()
 
     override fun uploadUserList() {
         appScope.launch {
@@ -129,14 +130,18 @@ class UserRepositoryImpl(
         }
     }
 
-    override fun listenMessages(sender: User, receiver: User) = callbackFlow<ResultData<List<ChatMessage>>> {
-        firebaseStorage.fetchNewMessages(sender = sender, receiver = receiver, this)
-    }
-
-    override fun createNewChat(users: List<User>) {
-        appScope.launch {
-            firebaseStorage.createNewChat(users)
+    override fun listenMessages(chat: Chat) =
+        callbackFlow<ResultData<List<ChatMessage>>> {
+            firebaseStorage.fetchNewMessages(chat = chat, flow = this)
         }
+
+    override fun createNewChat(users: List<User>) = flow<ResultData<Chat>> {
+        emit(ResultData.loading(null))
+        firebaseStorage.createNewChat(users = users, flow = this)
+    }
+    override fun openChat(chat: Chat) = flow<ResultData<Chat>> {
+        emit(ResultData.loading(null))
+        firebaseStorage.openChat(chat = chat, flow = this)
     }
 
     override fun fetchChats(user: User) = callbackFlow<ResultData<List<Chat>>> {

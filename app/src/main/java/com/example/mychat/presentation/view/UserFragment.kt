@@ -25,6 +25,7 @@ import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
 import com.example.mychat.presentation.adapters.RecentChatsAdapter
 import com.example.mychat.presentation.adapters.UserAdapter
+import com.example.mychat.presentation.listeners.ChatListener
 import com.example.mychat.presentation.listeners.UserListener
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.firebase.firestore.ktx.firestore
@@ -32,7 +33,7 @@ import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
-class UserFragment : Fragment(), UserListener {
+class UserFragment : Fragment(), ChatListener {
 
     private lateinit var binding: FragmentUserBinding
     private lateinit var repository: UserRepository
@@ -63,6 +64,7 @@ class UserFragment : Fragment(), UserListener {
                         }
                         is ResultData.Failure -> {
                             Toast.makeText(activity, state.message, Toast.LENGTH_SHORT).show()
+                            loading(false)
                         }
                     }
                 }
@@ -93,11 +95,27 @@ class UserFragment : Fragment(), UserListener {
             switchPage(SingInFragment())
         }
     }
-    override fun onUserClicked(user: User) {
-        requireActivity().supportFragmentManager.beginTransaction()
-            .replace(this.id, ChatFragment(user))
-            .addToBackStack(null)
-            .commit()
+    override fun onChatClicked(chat: Chat) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            repository.openChat(chat).collect { state ->
+                when (state) {
+                    is ResultData.Success -> {
+                        requireActivity().supportFragmentManager.beginTransaction()
+                            .replace(this@UserFragment.id, ChatFragment(state.value))
+                            .addToBackStack(null)
+                            .commit()
+                    }
+                    is ResultData.Loading -> {
+                        loading(true)
+                    }
+                    is ResultData.Failure -> {
+                        Toast.makeText(activity, state.message, Toast.LENGTH_SHORT).show()
+                        loading(false)
+                    }
+                }
+
+            }
+        }
     }
     private fun switchPage(fragment: Fragment){
         requireActivity().supportFragmentManager.beginTransaction()

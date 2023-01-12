@@ -11,7 +11,8 @@ object StorageConstants {
     val KEY_IMAGE = "image"
     val KEY_FCM_TOKEN = "fcmToken"
 
-    val KEY_COLLECTION_CHAT = "chatt"
+    val KEY_COLLECTION_CHAT = "messages"
+    val KEY_CHAT_ID = "chatId"
     val KEY_SENDER_ID = "senderId"
     val KEY_RECEIVER_ID = "receiverId"
     val KEY_MESSAGE = "message"
@@ -20,4 +21,5 @@ object StorageConstants {
     val KEY_COLLECTION_CHATS = "chats"
     val KEY_USERS_ID_ARRAY = "usersIdArray"
     val KEY_LAST_MESSAGE = "lastMessage"
+    val KEY_CHAT_NAME = "chatName"
 }

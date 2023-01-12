@@ -7,12 +7,13 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.mychat.databinding.ItemContainerReceivedBinding
 import com.example.mychat.databinding.ItemContainerSentMessageBinding
 import com.example.mychat.domain.models.ChatMessage
+import com.example.mychat.domain.models.User
 import java.text.SimpleDateFormat
 import java.util.*
 
 class ChatAdapter(
     private val receiverProfileImage: Bitmap,
-    private val senderID: String,
+    private val sender: User,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     var messages: List<ChatMessage> = emptyList()
@@ -61,7 +62,7 @@ class ChatAdapter(
 
 
     override fun getItemViewType(position: Int): Int {
-        return if (messages[position].senderId == senderID)
+        return if (messages[position].sender.id == sender.id)
             ViewType.SENT.type
         else
             ViewType.RECEIVED.type

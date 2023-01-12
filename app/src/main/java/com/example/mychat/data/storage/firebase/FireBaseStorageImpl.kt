@@ -2,8 +2,11 @@ package com.example.mychat.data.storage.firebase
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.nsd.NsdManager
 import android.util.Base64
 import android.util.Log
+import com.example.mychat.data.storage.StorageConstants.KEY_CHAT_ID
+import com.example.mychat.data.storage.StorageConstants.KEY_CHAT_NAME
 import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_CHAT
 import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_CHATS
 import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_USERS
@@ -31,6 +34,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.io.ByteArrayOutputStream
@@ -179,31 +183,19 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
     override suspend fun sendMessage(chatMessage: ChatMessage): Boolean {
         return suspendCoroutine {
             val documentReference = firestoreDb.collection(KEY_COLLECTION_CHAT)
+            val chatRef = firestoreDb.collection(KEY_COLLECTION_CHATS).document(chatMessage.chat.id)
+            val senderRef = firestoreDb.collection(KEY_COLLECTION_USERS).document(chatMessage.sender.id)
             val messageHashMap = hashMapOf(
-                KEY_SENDER_ID to chatMessage.senderId,
-                KEY_RECEIVER_ID to chatMessage.receiverId,
+                KEY_CHAT_ID to chatRef,
+                KEY_SENDER_ID to senderRef,
                 KEY_MESSAGE to chatMessage.message,
                 KEY_TIMESTAMP to chatMessage.date,
             )
             documentReference.add(messageHashMap)
                 .addOnSuccessListener { doc ->
                     // Обновление последнего сообщения чата
-                    val userR = firestoreDb.collection(KEY_COLLECTION_USERS).document(chatMessage.receiverId)
-                    val userS = firestoreDb.collection(KEY_COLLECTION_USERS).document(chatMessage.senderId)
-                    val usersRefs= listOf<DocumentReference>(userR, userS)
-                    val chatsRefs = firestoreDb.collection(KEY_COLLECTION_CHATS)
-                    chatsRefs.whereArrayContains(KEY_USERS_ID_ARRAY, userR).get().addOnSuccessListener {
-                        if (!it.isEmpty) {
-                            val usersRefs =
-                                (it.documents[0].get(KEY_USERS_ID_ARRAY) as ArrayList<DocumentReference>)
-                            if(userS in usersRefs) {
-                                val chatRef = chatsRefs.document(it.documents[0].id)
-                                chatRef.update(KEY_LAST_MESSAGE, chatMessage.message)
-                            }
-                        }
+                    chatRef.update(KEY_LAST_MESSAGE, chatMessage.message)
 
-                    }
-                    // Конец блока
                     Log.d(TAG, "Message added with ID: ${doc.id}")
                     it.resume(true)
                 }
@@ -215,59 +207,94 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
     }
 
     override suspend fun fetchNewMessages(
-        sender: User,
-        receiver: User,
+        chat: Chat,
         flow: ProducerScope<ResultData<List<ChatMessage>>>,
     ) {
-        val registrationSelfMessages =
-            newMessagesListener(sender = sender, receiver = receiver, flow = flow)
-        val registrationReceiverMessages =
-            newMessagesListener(sender = receiver, receiver = sender, flow = flow)
-        flow.awaitClose {
-            registrationSelfMessages.remove()
-            registrationReceiverMessages.remove()
-        }
-    }
+        val chatRef: DocumentReference =
+            firestoreDb.collection(KEY_COLLECTION_CHATS).document(chat.id)
+        val query: Query = firestoreDb
+            .collection(KEY_COLLECTION_CHAT)
+            .whereEqualTo(KEY_CHAT_ID, chatRef)
+        var chatRegistration: ListenerRegistration? = null
+        try {
+            chatRegistration = query.addSnapshotListener { value, error ->
+                flow.launch {
+                    if (error == null) {
 
-    private fun newMessagesListener(
-        sender: User,
-        receiver: User,
-        flow: ProducerScope<ResultData<List<ChatMessage>>>,
-    ): ListenerRegistration {
-        return firestoreDb.collection(KEY_COLLECTION_CHAT)
-            .whereEqualTo(KEY_SENDER_ID, sender.id)
-            .whereEqualTo(KEY_RECEIVER_ID, receiver.id)
-            .addSnapshotListener { value, error ->
-                if (error == null && !value!!.isEmpty) {
-                    val messageList: MutableList<ChatMessage> = mutableListOf()
-                    value?.documentChanges?.map { doc ->
-                        val message: String = doc.document.getString(KEY_MESSAGE)!!
-                        val date: Date = doc.document.getDate(KEY_TIMESTAMP)!!
+                        val messageList: MutableList<ChatMessage> = mutableListOf()
+                        value?.documentChanges?.map { doc ->
+                            val message: String = doc.document.getString(KEY_MESSAGE)!!
+                            val date: Date = doc.document.getDate(KEY_TIMESTAMP)!!
 
-                        val chatMessage = ChatMessage(senderId = sender.id,
-                            receiverId = receiver.id,
-                            message = message,
-                            date = date)
-                        messageList.add(chatMessage)
+                            // Find User
+                            val senderId: String = doc.document.getDocumentReference(KEY_SENDER_ID)!!.id
+                            val senderSnapshot = firestoreDb.collection(KEY_COLLECTION_USERS).document(senderId).get().await()
+                            val sender: User = getUserFromSnapShot(senderSnapshot)
+
+                            val chatMessage = ChatMessage(
+                                chat = chat,
+                                sender = sender,
+                                message = message,
+                                date = date)
+                            messageList.add(chatMessage)
+                        }
+                        flow.trySendBlocking(ResultData.success(messageList.toList()))
+                    } else {
+                        flow.trySendBlocking(ResultData.failure(error.localizedMessage))
                     }
-                    flow.trySendBlocking(ResultData.success(messageList.toList()))
-                } else {
-                    flow.trySendBlocking(ResultData.failure(error.toString()))
                 }
             }
+
+        } catch (error: FirebaseFirestoreException) {
+            flow.trySendBlocking(ResultData.failure(error.localizedMessage))
+        } finally {
+            flow.awaitClose {
+                chatRegistration?.remove()
+            }
+        }
+
     }
 
-
-    override suspend fun createNewChat(users: List<User>) {
-
-        val usersIds = users.map {
-            firestoreDb.collection(KEY_COLLECTION_USERS).document(it.id)
+    override suspend fun createNewChat(users: List<User>, flow: FlowCollector<ResultData<Chat>>) {
+        try {
+            val usersIds = users.map {
+                firestoreDb.collection(KEY_COLLECTION_USERS).document(it.id)
+            }
+            val lastMessage = "У вас еще нет сообщений"
+            val chatHashMap = hashMapOf(
+                KEY_USERS_ID_ARRAY to usersIds,
+                KEY_LAST_MESSAGE to lastMessage
+            )
+            val newChatId: String =
+                firestoreDb.collection(KEY_COLLECTION_CHATS).add(chatHashMap).await().id
+            val newChat = Chat(
+                id = newChatId,
+                name = null,
+                users = users,
+                lastMessage = lastMessage)
+            flow.emit(ResultData.success(newChat))
+        } catch (error: FirebaseFirestoreException) {
+            flow.emit(ResultData.failure(error.localizedMessage))
         }
-        val chatHashMap = hashMapOf(
-            KEY_USERS_ID_ARRAY to usersIds,
-            KEY_LAST_MESSAGE to "У вас еще нет сообщений"
-        )
-        firestoreDb.collection(KEY_COLLECTION_CHATS).add(chatHashMap)
+    }
+
+    override suspend fun openChat(chat: Chat, flow: FlowCollector<ResultData<Chat>>) {
+        try {
+            val savedChatSnapshot: DocumentSnapshot = firestoreDb
+                .collection(KEY_COLLECTION_CHATS)
+                .document(chat.id)
+                .get().await()
+
+            val savedChat = Chat(
+                id = savedChatSnapshot.id,
+                name = savedChatSnapshot.getString(KEY_CHAT_NAME),
+                users = chat.users,
+                lastMessage = savedChatSnapshot.getString(KEY_LAST_MESSAGE)!!
+            )
+            flow.emit(ResultData.success(savedChat))
+        } catch (error: FirebaseFirestoreException) {
+            flow.emit(ResultData.failure(error.localizedMessage))
+        }
     }
 
     override suspend fun fetchChats(
@@ -283,6 +310,8 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                     if (error == null && !value!!.isEmpty) {
                         val chatList: MutableList<Chat> = mutableListOf()
                         value?.documentChanges?.map { doc ->
+                            val chatId = doc.document.id as String
+                            val chatName: String? = doc.document.getString(KEY_CHAT_NAME)
                             val lastMessage: String = doc.document.getString(KEY_LAST_MESSAGE)!!
 
                             val usersRefs =
@@ -292,30 +321,33 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                             val users = mutableListOf<User>()
                             val job = allTask.addOnSuccessListener {
                                 for (documentSnapshot in it) {
-                                        if (documentSnapshot != null) {
-                                            val id = documentSnapshot.id as String
-                                            val name = documentSnapshot.get(KEY_NAME) as String
-                                            val imageStr = documentSnapshot.get(KEY_IMAGE) as String
-                                            val email = documentSnapshot.get(KEY_EMAIL) as String
-                                            val password =
-                                                documentSnapshot.get(KEY_PASSWORD) as String
-                                            val bytes = Base64.decode(imageStr, Base64.DEFAULT)
-                                            val image: Bitmap =
-                                                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                    if (documentSnapshot != null) {
+                                        val id = documentSnapshot.id as String
+                                        val name = documentSnapshot.get(KEY_NAME) as String
+                                        val imageStr = documentSnapshot.get(KEY_IMAGE) as String
+                                        val email = documentSnapshot.get(KEY_EMAIL) as String
+                                        val password =
+                                            documentSnapshot.get(KEY_PASSWORD) as String
+                                        val bytes = Base64.decode(imageStr, Base64.DEFAULT)
+                                        val image: Bitmap =
+                                            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
 
-                                            val user = User(
-                                                id = id,
-                                                image = image,
-                                                name = name,
-                                                email = email,
-                                                password = password
-                                            )
-                                            users.add(user)
-                                        }
+                                        val user = User(
+                                            id = id,
+                                            image = image,
+                                            name = name,
+                                            email = email,
+                                            password = password
+                                        )
+                                        users.add(user)
                                     }
+                                }
                             }
                             job.await()
-                            val chat = Chat(users = users, lastMessage = lastMessage, "")
+                            val chat = Chat(id = chatId,
+                                name = chatName,
+                                users = users,
+                                lastMessage = lastMessage)
                             chatList.add(chat)
                         }
                         flow.trySendBlocking(ResultData.success(chatList.toList()))

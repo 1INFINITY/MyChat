@@ -96,10 +96,26 @@ class SelectUserFragment : Fragment(), UserListener {
 
     override fun onUserClicked(user: User) {
         val mainUser = repository.getCachedUser()
-        repository.createNewChat(listOf(user, mainUser))
-        requireActivity().supportFragmentManager.beginTransaction()
-            .replace(this.id, ChatFragment(user))
-            .addToBackStack(null)
-            .commit()
+        viewLifecycleOwner.lifecycleScope.launch {
+            val users = listOf(user, mainUser)
+            repository.createNewChat(users).collect { state ->
+                when (state) {
+                    is ResultData.Success -> {
+                        requireActivity().supportFragmentManager.beginTransaction()
+                            .replace(this@SelectUserFragment.id, ChatFragment(state.value))
+                            .addToBackStack(null)
+                            .commit()
+                    }
+                    is ResultData.Loading -> {
+                        loading(true)
+                    }
+                    is ResultData.Failure -> {
+                        Toast.makeText(activity, state.message, Toast.LENGTH_SHORT).show()
+                        loading(false)
+                    }
+                }
+
+            }
+        }
     }
 }

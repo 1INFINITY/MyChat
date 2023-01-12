@@ -6,9 +6,9 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.mychat.databinding.ItemContainerChatBinding
 import com.example.mychat.domain.models.Chat
 import com.example.mychat.domain.models.User
-import com.example.mychat.presentation.listeners.UserListener
+import com.example.mychat.presentation.listeners.ChatListener
 
-class RecentChatsAdapter(private val mainUser: User, private val userListener: UserListener) :
+class RecentChatsAdapter(private val mainUser: User, private val chatListener: ChatListener) :
     RecyclerView.Adapter<RecentChatsAdapter.ChatViewHolder>() {
 
     var chats: List<Chat> = emptyList()
@@ -32,13 +32,14 @@ class RecentChatsAdapter(private val mainUser: User, private val userListener: U
     override fun onBindViewHolder(holder: ChatViewHolder, position: Int) {
         val chat = chats[position]
         val context = holder.itemView.context
+
         val anotherUser = chat.users.find { it.id != mainUser.id } ?: mainUser
 
         with(holder.binding) {
             imageProfile.setImageBitmap(anotherUser.image)
             textName.text = anotherUser.name
             textLatestMessage.text = chat.lastMessage
-            root.setOnClickListener { userListener.onUserClicked(anotherUser) }
+            root.setOnClickListener { chatListener.onChatClicked(chat) }
         }
     }
 

@@ -14,6 +14,7 @@ import com.example.mychat.data.repository.UserRepositoryImpl
 import com.example.mychat.data.storage.firebase.FireBaseStorageImpl
 import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorageImpl
 import com.example.mychat.databinding.FragmentChatBinding
+import com.example.mychat.domain.models.Chat
 import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
@@ -29,10 +30,11 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-class ChatFragment(val userReceiver: User) : Fragment() {
+class ChatFragment(val chat: Chat) : Fragment() {
 
     private lateinit var binding: FragmentChatBinding
     private lateinit var userSender: User
+    private lateinit var userReceiver: User
     private lateinit var adapter: ChatAdapter
     private lateinit var repository: UserRepository
     private lateinit var messages: MutableList<ChatMessage>
@@ -47,12 +49,14 @@ class ChatFragment(val userReceiver: User) : Fragment() {
         repository = UserRepositoryImpl(firebaseStorage = storage, sharedPrefsStorage = sharedPrefs)
 
         userSender = repository.getCachedUser()
-        adapter = ChatAdapter(userReceiver.image, userSender.id)
+        userReceiver = chat.users.find { it.id != userSender.id } ?: userSender
+
+        adapter = ChatAdapter(userReceiver.image, userSender)
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 //repository.observeMessages()
-                repository.listenMessages(sender = userSender, receiver = userReceiver).collect { state ->
+                repository.listenMessages(chat = chat).collect { state ->
                     when (state) {
                         is ResultData.Success -> {
                             state.value.forEach {
@@ -101,8 +105,9 @@ class ChatFragment(val userReceiver: User) : Fragment() {
 
     private fun sendMessage() {
         val messageString: String = binding.inputMessage.text.toString()
-        val message = ChatMessage(senderId = userSender.id,
-            receiverId = userReceiver.id,
+        val message = ChatMessage(
+            chat = chat,
+            sender = userSender,
             message = messageString,
             date = Date())
         repository.sendMessage(message)

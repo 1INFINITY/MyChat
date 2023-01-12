@@ -27,11 +27,12 @@ interface FireBaseUserStorage {
     suspend fun sendMessage(chatMessage: ChatMessage): Boolean
 
     suspend fun fetchNewMessages(
-        sender: User,
-        receiver: User,
+        chat: Chat,
         flow: ProducerScope<ResultData<List<ChatMessage>>>
     )
-    suspend fun createNewChat(users: List<User>)
+    suspend fun createNewChat(users: List<User>, flow: FlowCollector<ResultData<Chat>>)
+
+    suspend fun openChat(chat: Chat, flow: FlowCollector<ResultData<Chat>>)
 
     suspend fun fetchChats(user: User, flow: ProducerScope<ResultData<List<Chat>>>)
 }
