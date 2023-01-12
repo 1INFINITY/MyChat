@@ -60,4 +60,5 @@ class SingInViewModel(private val repository: UserRepository): ViewModel() {
         }
         return result
     }
+
 }

@@ -1,75 +1,48 @@
 package com.example.mychat.presentation.view
 
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.ProgressBar
-import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.widget.AppCompatImageView
-import androidx.lifecycle.Lifecycle
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import com.example.mychat.R
 import com.example.mychat.data.repository.UserRepositoryImpl
 import com.example.mychat.data.storage.firebase.FireBaseStorageImpl
 import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorageImpl
-import com.example.mychat.databinding.FragmentSelectUserBinding
 import com.example.mychat.databinding.FragmentUserBinding
 import com.example.mychat.domain.models.Chat
-import com.example.mychat.domain.models.User
-import com.example.mychat.domain.repository.ResultData
-import com.example.mychat.domain.repository.UserRepository
 import com.example.mychat.presentation.adapters.RecentChatsAdapter
-import com.example.mychat.presentation.adapters.UserAdapter
 import com.example.mychat.presentation.listeners.ChatListener
-import com.example.mychat.presentation.listeners.UserListener
-import com.google.android.material.imageview.ShapeableImageView
+import com.example.mychat.presentation.viewmodels.UserModelFactory
+import com.example.mychat.presentation.viewmodels.UserViewModel
+import com.example.mychat.presentation.viewmodels.сontracts.UserContract.*
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
 
 class UserFragment : Fragment(), ChatListener {
 
+    private lateinit var vm: UserViewModel
     private lateinit var binding: FragmentUserBinding
-    private lateinit var repository: UserRepository
-    private lateinit var chats: List<Chat>
     private lateinit var adapter: RecentChatsAdapter
-    private lateinit var user: User
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         val db = Firebase.firestore
         val storage = FireBaseStorageImpl(firestoreDb = db)
-        val sharedPrefs = SharedPreferencesStorageImpl(appContext = requireActivity().applicationContext)
-        repository = UserRepositoryImpl(firebaseStorage = storage, sharedPrefsStorage = sharedPrefs)
-        user = repository.getCachedUser()
-        adapter = RecentChatsAdapter(mainUser = user, this)
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                repository.fetchChats(user).collect { state ->
-                    when (state) {
-                        is ResultData.Success -> {
-                            Toast.makeText(activity, "Successful list upload", Toast.LENGTH_SHORT)
-                                .show()
-                            adapter.chats = state.value
-                            loading(false)
-                        }
-                        is ResultData.Loading -> {
-                            loading(true)
-                        }
-                        is ResultData.Failure -> {
-                            Toast.makeText(activity, state.message, Toast.LENGTH_SHORT).show()
-                            loading(false)
-                        }
-                    }
-                }
-            }
-        }
+        val sharedPrefs =
+            SharedPreferencesStorageImpl(appContext = requireActivity().applicationContext)
+        val repository =
+            UserRepositoryImpl(firebaseStorage = storage, sharedPrefsStorage = sharedPrefs)
+
+        val vmFactory = UserModelFactory(repository)
+        vm = ViewModelProvider(this, vmFactory)
+            .get(UserViewModel::class.java)
+
+        adapter = RecentChatsAdapter(mainUser = vm.getMainUser(), this)
+
     }
 
     override fun onCreateView(
@@ -83,46 +56,67 @@ class UserFragment : Fragment(), ChatListener {
     override fun onStart() {
         super.onStart()
 
-        binding.textName.text = user.name
-        binding.imageProfile.setImageBitmap(user.image)
         binding.recyclerViewChats.adapter = adapter
 
         binding.floatingButtonNewChat.setOnClickListener {
-            switchPage(SelectUserFragment())
+            vm.setEvent(Event.OnFloatingButtonClicked)
         }
         binding.imageSignOut.setOnClickListener {
-            repository.signOut()
-            switchPage(SingInFragment())
+            vm.setEvent(Event.OnSignOutClicked)
         }
+
+        initObservers()
     }
+
     override fun onChatClicked(chat: Chat) {
-        viewLifecycleOwner.lifecycleScope.launch {
-            repository.openChat(chat).collect { state ->
-                when (state) {
-                    is ResultData.Success -> {
-                        requireActivity().supportFragmentManager.beginTransaction()
-                            .replace(this@UserFragment.id, ChatFragment(state.value))
-                            .addToBackStack(null)
-                            .commit()
-                    }
-                    is ResultData.Loading -> {
-                        loading(true)
-                    }
-                    is ResultData.Failure -> {
-                        Toast.makeText(activity, state.message, Toast.LENGTH_SHORT).show()
+        vm.setEvent(Event.OnChatClicked(chat = chat))
+    }
+
+    /**
+     * Initialize Observers
+     */
+    private fun initObservers() {
+        lifecycleScope.launchWhenStarted {
+            vm.uiState.collect {
+                binding.textName.text = it.userName ?: "Default name"
+                it.profileImage?.also { image -> binding.imageProfile.setImageBitmap(image) }
+                when (it.recyclerViewState) {
+                    is RecyclerViewState.Idle -> {
                         loading(false)
                     }
+                    is RecyclerViewState.Loading -> {
+                        loading(true)
+                    }
+                    is RecyclerViewState.Success -> {
+                        loading(false)
+                        adapter.chats = it.recyclerViewState.chatsList
+                    }
                 }
-
             }
         }
+
+        lifecycleScope.launchWhenStarted {
+            vm.effect.collect {
+                when (it) {
+                    is Effect.ShowToast -> {
+                        Toast.makeText(requireActivity(), it.message, Toast.LENGTH_SHORT).show()
+                    }
+                    is Effect.ChangeFragment -> {
+                        switchPage(it.fragment)
+                    }
+                }
+            }
+        }
+
     }
-    private fun switchPage(fragment: Fragment){
+
+    private fun switchPage(fragment: Fragment) {
         requireActivity().supportFragmentManager.beginTransaction()
             .replace(this.id, fragment)
             .addToBackStack(null)
             .commit()
     }
+
     private fun loading(isLoading: Boolean) {
         if (isLoading) {
             binding.recyclerViewChats.visibility = View.INVISIBLE
@@ -134,4 +128,5 @@ class UserFragment : Fragment(), ChatListener {
             binding.textError.visibility = View.INVISIBLE
         }
     }
+
 }

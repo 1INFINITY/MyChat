@@ -12,6 +12,7 @@ import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -130,21 +131,23 @@ class UserRepositoryImpl(
         }
     }
 
-    override fun listenMessages(chat: Chat) =
-        callbackFlow<ResultData<List<ChatMessage>>> {
-            firebaseStorage.fetchNewMessages(chat = chat, flow = this)
-        }
+    override fun listenMessages(chat: Chat) = callbackFlow<ResultData<List<ChatMessage>>> {
+        trySendBlocking(ResultData.loading(null))
+        firebaseStorage.fetchNewMessages(chat = chat, flow = this)
+    }
 
     override fun createNewChat(users: List<User>) = flow<ResultData<Chat>> {
         emit(ResultData.loading(null))
         firebaseStorage.createNewChat(users = users, flow = this)
     }
+
     override fun openChat(chat: Chat) = flow<ResultData<Chat>> {
         emit(ResultData.loading(null))
         firebaseStorage.openChat(chat = chat, flow = this)
     }
 
     override fun fetchChats(user: User) = callbackFlow<ResultData<List<Chat>>> {
+        trySendBlocking(ResultData.loading(null))
         firebaseStorage.fetchChats(user = user, this)
     }
 }
