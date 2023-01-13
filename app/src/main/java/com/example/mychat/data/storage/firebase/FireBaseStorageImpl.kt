@@ -45,33 +45,35 @@ import kotlin.coroutines.suspendCoroutine
 class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBaseUserStorage {
     val TAG = "FIREBASE_STORAGE"
 
-    override suspend fun userRegistration(user: User): User? {
-        return suspendCoroutine {
-            val userImageEncoded: String = encodeImage(user.image)
+    override suspend fun userRegistration(user: User, flow: FlowCollector<ResultData<User>>): User? {
+        val authData = AuthData(email = user.email, password = user.password)
+        val isUserExist = checkUserExistAuthorization(authData = authData)
 
+        if (isUserExist) {
+            flow.emit(ResultData.failure("User already exist"))
+            return null
+        }
+        try {
+            val userImageEncoded: String = encodeImage(user.image)
             val userHashMap = hashMapOf(
                 KEY_IMAGE to userImageEncoded,
                 KEY_NAME to user.name,
                 KEY_EMAIL to user.email,
                 KEY_PASSWORD to user.password,
             )
-            firestoreDb.collection(KEY_COLLECTION_USERS)
-                .add(userHashMap)
-                .addOnSuccessListener { documentReference ->
-                    Log.d(TAG, "User added with ID: ${documentReference.id}")
-                    val newUser = User(
-                        id = documentReference.id,
-                        name = user.name,
-                        image = user.image,
-                        email = user.email,
-                        password = user.password
-                    )
-                    it.resume(newUser)
-                }
-                .addOnFailureListener { e ->
-                    Log.d(TAG, "User add failure: ${e.message}")
-                    it.resume(null)
-                }
+            val userRef: DocumentReference = firestoreDb.collection(KEY_COLLECTION_USERS).add(userHashMap).await()
+            val newUser = User(
+                id = userRef.id,
+                name = user.name,
+                image = user.image,
+                email = user.email,
+                password = user.password
+            )
+            flow.emit(ResultData.success(newUser))
+            return newUser
+        } catch (error: FirebaseFirestoreException) {
+            flow.emit(ResultData.failure(error.localizedMessage))
+            return null
         }
     }
 

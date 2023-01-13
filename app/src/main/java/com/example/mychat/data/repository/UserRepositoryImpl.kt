@@ -16,6 +16,7 @@ import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlin.coroutines.suspendCoroutine
 
 class UserRepositoryImpl(
     private val firebaseStorage: FireBaseUserStorage,
@@ -73,26 +74,13 @@ class UserRepositoryImpl(
         }
     }
 
-    override fun userRegistration(user: User) {
-        appScope.launch {
-            registrationResult.emit(ResultData.loading(null))
+    override fun userRegistration(user: User) = flow<ResultData<User>> {
+        emit(ResultData.loading(null))
+        val user: User? = firebaseStorage.userRegistration(user = user, flow = this)
 
-            val authData = AuthData(email = user.email, password = user.password)
-
-            val findResult: User? = firebaseStorage.findUser(authData)
-            if (findResult != null) {
-                registrationResult.emit(ResultData.failure("This user already exist"))
-            } else {
-                val result: User? = firebaseStorage.userRegistration(user)
-
-                if (result != null) {
-                    sharedPrefsStorage.saveUserDetails(user = result)
-                    firebaseStorage.updateToken(userId = result.id)
-                    registrationResult.emit(ResultData.success(result))
-                } else {
-                    registrationResult.emit(ResultData.failure("Something goes wrong"))
-                }
-            }
+        user?.let {
+            sharedPrefsStorage.saveUserDetails(user = it)
+            firebaseStorage.updateToken(userId = it.id)
         }
     }
 

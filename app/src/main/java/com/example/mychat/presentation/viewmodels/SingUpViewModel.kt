@@ -4,74 +4,113 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
-import android.util.Log
 import android.util.Patterns
-import android.widget.EditText
-import android.widget.Toast
-import androidx.core.content.ContentProviderCompat.requireContext
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.mychat.R
-import com.example.mychat.domain.models.AuthData
 import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import com.example.mychat.presentation.viewmodels.base.BaseViewModel
+import com.example.mychat.presentation.viewmodels.сontracts.SignUpContract
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.io.FileDescriptor
 import java.io.IOException
 
-class SingUpViewModel(private val repository: UserRepository) : ViewModel() {
-    private val TAG = "SIGN_UP_FRAG_VM"
-    private var _uiState = MutableStateFlow<ResultData<User>>(ResultData.empty(null))
-    val uiState = _uiState.asStateFlow()
+class SingUpViewModel(private val repository: UserRepository) :
+    BaseViewModel<SignUpContract.Event, SignUpContract.State, SignUpContract.Effect>() {
 
     private var profileImageBitmap: Bitmap? = null
 
-    init {
-        Log.d(TAG, "Initialization")
+    override fun createInitialState(): SignUpContract.State {
+        return SignUpContract.State(
+            profileImage = null,
+            name = null,
+            email = null,
+            password = null,
+            confirmPassword = null,
+            fragmentViewState = SignUpContract.ViewState.Idle
+        )
+    }
+
+    override fun handleEvent(event: SignUpContract.Event) {
+        when (event) {
+            is SignUpContract.Event.OnProfileImageClicked -> {
+
+            }
+            is SignUpContract.Event.OnSignUpButtonClicked -> {
+                userRegistration(
+                    name = event.name,
+                    email = event.email,
+                    password = event.password,
+                    confirmPassword = event.confirmPassword
+                )
+            }
+            is SignUpContract.Event.OnSignInTextClicked -> {
+                setEffect { SignUpContract.Effect.ToSignInFragment }
+            }
+        }
+    }
+
+    private fun userRegistration(
+        name: String,
+        email: String,
+        password: String,
+        confirmPassword: String,
+    ) {
+        val user: User = makeUser(name, email, password, confirmPassword) ?: return
+
         viewModelScope.launch {
-            repository.observeRegistration().collectLatest { result ->
+            repository.userRegistration(user = user).collectLatest { result ->
                 when (result) {
                     is ResultData.Success -> {
-                        _uiState.value = ResultData.success(result.value)
+                        setState {
+                            copy(fragmentViewState = SignUpContract.ViewState.Success)
+                        }
+                        setEffect { SignUpContract.Effect.ToSignInFragment }
                     }
                     is ResultData.Loading -> {
-                        _uiState.value = ResultData.loading(null)
+                        setState {
+                            copy(fragmentViewState = SignUpContract.ViewState.Loading)
+                        }
                     }
                     is ResultData.Failure -> {
-                        _uiState.value = ResultData.failure(result.message)
+                        setState {
+                            copy(fragmentViewState = SignUpContract.ViewState.Error(result.message))
+                        }
                     }
-                    else -> {}
                 }
             }
         }
     }
 
-    fun userRegistration(name: String, email: String, password: String, confirmPassword: String) {
-        Log.d(TAG, "Start reg")
-        if (isValidSignUpDetails(
+    fun setProfileImage(selectedFileUri: Uri, context: Context) {
+        profileImageBitmap = uriToBitmap(selectedFileUri = selectedFileUri, context = context)
+    }
+
+    private fun makeUser(
+        name: String,
+        email: String,
+        password: String,
+        confirmPassword: String,
+    ): User? {
+        if (
+            !isValidSignUpDetails(
                 name = name,
                 email = email,
                 password = password,
                 confirmPassword = confirmPassword)
         ) {
-            Log.d(TAG, "Successful validation")
-            val user = User(
-                id = "",
-                image = profileImageBitmap!!,
-                name = name,
-                email = email,
-                password = password
-            )
-            repository.userRegistration(user)
-        }
-    }
 
-    fun setProfileImage(selectedFileUri: Uri, context: Context) {
-        profileImageBitmap = uriToBitmap(selectedFileUri = selectedFileUri, context = context)
+            return null
+        }
+
+        return User(
+            id = "",
+            image = profileImageBitmap!!,
+            name = name,
+            email = email,
+            password = password
+        )
     }
 
     // TODO: Try implement func without context
@@ -96,27 +135,28 @@ class SingUpViewModel(private val repository: UserRepository) : ViewModel() {
         confirmPassword: String,
     ): Boolean {
         var result = true
+        var message = ""
         if (profileImageBitmap == null) {
-            _uiState.value = ResultData.failure("Select a profile image")
+            message = "Select a profile image"
             result = false
         } else if (name.trim().isEmpty()) {
-            _uiState.value = ResultData.failure("Enter name")
+            message = "Enter name"
             result = false
         } else if (!Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
-            _uiState.value = ResultData.failure("Enter email")
-
+            message = "Enter email"
             result = false
         } else if (password.trim().isEmpty()) {
-            _uiState.value = ResultData.failure("Enter password")
-
+            message = "Enter password"
             result = false
         } else if (confirmPassword.trim().isEmpty()) {
-            _uiState.value = ResultData.failure("Confirm you passwords")
+            message = "Confirm you passwords"
             result = false
         } else if (confirmPassword != password) {
-            _uiState.value = ResultData.failure("Password and confirm must be same")
+            message = "Password and confirm must be same"
             result = false
         }
+        if (!result)
+            setEffect { SignUpContract.Effect.ShowToast(message = message) }
         return result
     }
 }

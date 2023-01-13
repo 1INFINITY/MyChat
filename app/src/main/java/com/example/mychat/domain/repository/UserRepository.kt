@@ -22,7 +22,7 @@ interface UserRepository {
 
     fun signOut()
 
-    fun userRegistration(user: User)
+    fun userRegistration(user: User) : Flow<ResultData<User>>
 
     fun userAuthorization(authData: AuthData)
 
