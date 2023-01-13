@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -22,7 +23,9 @@ import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
 import com.example.mychat.presentation.adapters.UserAdapter
 import com.example.mychat.presentation.listeners.UserListener
-import com.example.mychat.presentation.viewmodels.SingUpModelFactory
+import com.example.mychat.presentation.viewmodels.*
+import com.example.mychat.presentation.viewmodels.сontracts.ChatContract
+import com.example.mychat.presentation.viewmodels.сontracts.SelectUserContract
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.collectLatest
@@ -33,34 +36,20 @@ class SelectUserFragment : Fragment(), UserListener {
 
     private lateinit var binding: FragmentSelectUserBinding
     private lateinit var adapter: UserAdapter
+    private lateinit var vm: SelectUserViewModel
 
-    private lateinit var repository: UserRepository
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val db = Firebase.firestore
         val storage = FireBaseStorageImpl(firestoreDb = db)
-        val sharedPrefs = SharedPreferencesStorageImpl(appContext = requireActivity().applicationContext)
-        repository = UserRepositoryImpl(firebaseStorage = storage, sharedPrefsStorage = sharedPrefs)
-        adapter = UserAdapter(this)
+        val sharedPrefs =
+            SharedPreferencesStorageImpl(appContext = requireActivity().applicationContext)
+        val repository =
+            UserRepositoryImpl(firebaseStorage = storage, sharedPrefsStorage = sharedPrefs)
 
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                repository.observeUserListResult().collectLatest { state ->
-                    when (state) {
-                        is ResultData.Success -> {
-                            Toast.makeText(activity, "Successful list upload", Toast.LENGTH_SHORT)
-                                .show()
-                            adapter.users = state.value
-                        }
-                        is ResultData.Loading -> {
-                        }
-                        is ResultData.Failure -> {
-                            Toast.makeText(activity, state.message, Toast.LENGTH_SHORT).show()
-                        }
-                    }
-                }
-            }
-        }
+        val vmFactory = SelectUserModelFactory(repository = repository)
+        vm = ViewModelProvider(this, vmFactory)
+            .get(SelectUserViewModel::class.java)
     }
 
     override fun onCreateView(
@@ -74,13 +63,54 @@ class SelectUserFragment : Fragment(), UserListener {
     override fun onStart() {
         super.onStart()
 
+        adapter = UserAdapter(this)
+        binding.recyclerViewUsers.adapter = adapter
+
         binding.imageBack.setOnClickListener {
-            switchPage()
+            vm.setEvent(SelectUserContract.Event.OnBackButtonClicked)
         }
 
-        binding.recyclerViewUsers.adapter = adapter
-        repository.uploadUserList()
+        initObservers()
     }
+
+    private fun initObservers() {
+        lifecycleScope.launchWhenStarted {
+            vm.uiState.collectLatest {
+                when (it.recyclerViewState) {
+                    is SelectUserContract.RecyclerViewState.Idle -> {
+                        loading(false)
+                    }
+                    is SelectUserContract.RecyclerViewState.Loading -> {
+                        loading(true)
+                    }
+                    is SelectUserContract.RecyclerViewState.Success -> {
+                        loading(false)
+                        adapter.users = it.recyclerViewState.users
+                    }
+                }
+            }
+        }
+
+        lifecycleScope.launchWhenStarted {
+            vm.effect.collect {
+                when (it) {
+                    is SelectUserContract.Effect.ShowToast -> {
+                        Toast.makeText(requireActivity(), it.message, Toast.LENGTH_SHORT).show()
+                    }
+                    is SelectUserContract.Effect.ToBackFragment -> {
+                        switchPage(fragment = null)
+                    }
+                    is SelectUserContract.Effect.ToChatFragment -> {
+                        switchPage(
+                            fragment = ChatFragment(chat = it.chat)
+                        )
+                    }
+                }
+            }
+        }
+
+    }
+
     private fun loading(isLoading: Boolean) {
         if (isLoading) {
             binding.progressBar.visibility = View.VISIBLE
@@ -90,32 +120,19 @@ class SelectUserFragment : Fragment(), UserListener {
             binding.textError.visibility = View.VISIBLE
         }
     }
-    private fun switchPage(){
-        requireActivity().supportFragmentManager.popBackStack()
+
+    private fun switchPage(fragment: Fragment?) {
+        if (fragment == null) {
+            requireActivity().supportFragmentManager.popBackStack()
+            return
+        }
+        requireActivity().supportFragmentManager.beginTransaction()
+            .replace(this.id, fragment)
+            .addToBackStack(null)
+            .commit()
     }
 
     override fun onUserClicked(user: User) {
-        val mainUser = repository.getCachedUser()
-        viewLifecycleOwner.lifecycleScope.launch {
-            val users = listOf(user, mainUser)
-            repository.createNewChat(users).collect { state ->
-                when (state) {
-                    is ResultData.Success -> {
-                        requireActivity().supportFragmentManager.beginTransaction()
-                            .replace(this@SelectUserFragment.id, ChatFragment(state.value))
-                            .addToBackStack(null)
-                            .commit()
-                    }
-                    is ResultData.Loading -> {
-                        loading(true)
-                    }
-                    is ResultData.Failure -> {
-                        Toast.makeText(activity, state.message, Toast.LENGTH_SHORT).show()
-                        loading(false)
-                    }
-                }
-
-            }
-        }
+        vm.setEvent(SelectUserContract.Event.OnUserClicked(user = user))
     }
 }
