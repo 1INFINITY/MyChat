@@ -1,5 +1,6 @@
 package com.example.mychat.presentation.viewmodels
 
+import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.example.mychat.domain.models.Chat
 import com.example.mychat.domain.models.ChatMessage
@@ -8,6 +9,7 @@ import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
 import com.example.mychat.presentation.viewmodels.base.BaseViewModel
 import com.example.mychat.presentation.viewmodels.сontracts.ChatContract
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.util.*
 
@@ -93,6 +95,12 @@ class ChatViewModel(
             sender = userSender,
             message = message,
             date = Date())
-        repository.sendMessage(message)
+        viewModelScope.launch {
+            repository.sendMessage(message).collect {
+                when(it) {
+                    is ResultData.Success -> Log.d("Chat", it.value.toString())
+                }
+            }
+        }
     }
 }

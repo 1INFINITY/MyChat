@@ -1,6 +1,5 @@
 package com.example.mychat.data.repository
 
-import android.util.Log
 import com.example.mychat.data.storage.firebase.FireBaseUserStorage
 import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorage
 import com.example.mychat.domain.models.AuthData
@@ -12,15 +11,13 @@ import com.example.mychat.domain.repository.UserRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.trySendBlocking
-import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flow
 
 class UserRepositoryImpl(
     private val firebaseStorage: FireBaseUserStorage,
     private val sharedPrefsStorage: SharedPreferencesStorage,
 ) : UserRepository {
-
-    private val appScope: CoroutineScope = GlobalScope
 
     override fun uploadUserList() = flow<ResultData<List<User>>> {
         emit(ResultData.loading(null))
@@ -52,7 +49,7 @@ class UserRepositoryImpl(
         emit(ResultData.loading(null))
         val user = firebaseStorage.userAuthorization(authData = authData, flow = this)
 
-        user?.let{
+        user?.let {
             sharedPrefsStorage.saveUserDetails(user = it)
         }
     }
@@ -61,10 +58,9 @@ class UserRepositoryImpl(
         return sharedPrefsStorage.getUserDetails()
     }
 
-    override fun sendMessage(chatMessage: ChatMessage) {
-        appScope.launch {
-            val result: Boolean = firebaseStorage.sendMessage(chatMessage)
-        }
+    override fun sendMessage(chatMessage: ChatMessage) = flow<ResultData<Boolean>> {
+        emit(ResultData.loading(null))
+        firebaseStorage.sendMessage(chatMessage, flow = this)
     }
 
     override fun listenMessages(chat: Chat) = callbackFlow<ResultData<List<ChatMessage>>> {

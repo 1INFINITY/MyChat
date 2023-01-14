@@ -4,7 +4,7 @@ import com.example.mychat.domain.models.AuthData
 import com.example.mychat.domain.models.Chat
 import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.Flow
 
 interface UserRepository {
 
@@ -18,7 +18,7 @@ interface UserRepository {
 
     fun getCachedUser(): User
 
-    fun sendMessage(chatMessage: ChatMessage)
+    fun sendMessage(chatMessage: ChatMessage): Flow<ResultData<Boolean>>
 
     fun listenMessages(chat: Chat): Flow<ResultData<List<ChatMessage>>>
 

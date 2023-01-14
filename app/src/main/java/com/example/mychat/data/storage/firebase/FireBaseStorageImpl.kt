@@ -3,7 +3,6 @@ package com.example.mychat.data.storage.firebase
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.util.Base64
-import android.util.Log
 import com.example.mychat.data.storage.StorageConstants.KEY_CHAT_ID
 import com.example.mychat.data.storage.StorageConstants.KEY_CHAT_NAME
 import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_CHAT
@@ -165,10 +164,13 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         documentReference.update(KEY_FCM_TOKEN, token)
     }
 
-    override suspend fun signOutUser(user: User, flow: FlowCollector<ResultData<Boolean>>): Boolean {
+    override suspend fun signOutUser(
+        user: User,
+        flow: FlowCollector<ResultData<Boolean>>,
+    ): Boolean {
         val usersRef = firestoreDb.collection(KEY_COLLECTION_USERS)
         try {
-            usersRef.document(user.id).update(KEY_FCM_TOKEN , FieldValue.delete()).await()
+            usersRef.document(user.id).update(KEY_FCM_TOKEN, FieldValue.delete()).await()
             flow.emit(ResultData.success(true))
             return true
         } catch (error: FirebaseFirestoreException) {
@@ -190,30 +192,29 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         }
     }
 
-    override suspend fun sendMessage(chatMessage: ChatMessage): Boolean {
-        return suspendCoroutine {
-            val documentReference = firestoreDb.collection(KEY_COLLECTION_CHAT)
-            val chatRef = firestoreDb.collection(KEY_COLLECTION_CHATS).document(chatMessage.chat.id)
-            val senderRef =
-                firestoreDb.collection(KEY_COLLECTION_USERS).document(chatMessage.sender.id)
-            val messageHashMap = hashMapOf(
-                KEY_CHAT_ID to chatRef,
-                KEY_SENDER_ID to senderRef,
-                KEY_MESSAGE to chatMessage.message,
-                KEY_TIMESTAMP to chatMessage.date,
-            )
-            documentReference.add(messageHashMap)
-                .addOnSuccessListener { doc ->
-                    // Обновление последнего сообщения чата
-                    chatRef.update(KEY_LAST_MESSAGE, chatMessage.message)
+    override suspend fun sendMessage(
+        chatMessage: ChatMessage,
+        flow: FlowCollector<ResultData<Boolean>>,
+    ): Boolean {
+        val documentReference = firestoreDb.collection(KEY_COLLECTION_CHAT)
+        val chatRef = firestoreDb.collection(KEY_COLLECTION_CHATS).document(chatMessage.chat.id)
+        val senderRef =
+            firestoreDb.collection(KEY_COLLECTION_USERS).document(chatMessage.sender.id)
+        val messageHashMap = hashMapOf(
+            KEY_CHAT_ID to chatRef,
+            KEY_SENDER_ID to senderRef,
+            KEY_MESSAGE to chatMessage.message,
+            KEY_TIMESTAMP to chatMessage.date,
+        )
 
-                    Log.d(TAG, "Message added with ID: ${doc.id}")
-                    it.resume(true)
-                }
-                .addOnFailureListener { e ->
-                    Log.d(TAG, "Message add failure: ${e.message}")
-                    it.resume(false)
-                }
+        try {
+            documentReference.add(messageHashMap).await()
+            chatRef.update(KEY_LAST_MESSAGE, chatMessage.message)
+            flow.emit(ResultData.success(true))
+            return true
+        } catch (error: FirebaseFirestoreException) {
+            flow.emit(ResultData.failure(error.localizedMessage))
+            return false
         }
     }
 
