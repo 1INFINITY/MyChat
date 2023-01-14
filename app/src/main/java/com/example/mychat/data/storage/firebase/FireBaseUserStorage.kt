@@ -22,7 +22,7 @@ interface FireBaseUserStorage {
 
     suspend fun deleteUserFieldById(userId: String, fieldName: String): Boolean
 
-    suspend fun getAllUsers(): List<User>?
+    suspend fun getAllUsers(flow: FlowCollector<ResultData<List<User>>>): List<User>?
 
     suspend fun sendMessage(chatMessage: ChatMessage): Boolean
 

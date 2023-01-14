@@ -2,7 +2,6 @@ package com.example.mychat.data.storage.firebase
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.nsd.NsdManager
 import android.util.Base64
 import android.util.Log
 import com.example.mychat.data.storage.StorageConstants.KEY_CHAT_ID
@@ -17,7 +16,6 @@ import com.example.mychat.data.storage.StorageConstants.KEY_LAST_MESSAGE
 import com.example.mychat.data.storage.StorageConstants.KEY_MESSAGE
 import com.example.mychat.data.storage.StorageConstants.KEY_NAME
 import com.example.mychat.data.storage.StorageConstants.KEY_PASSWORD
-import com.example.mychat.data.storage.StorageConstants.KEY_RECEIVER_ID
 import com.example.mychat.data.storage.StorageConstants.KEY_SENDER_ID
 import com.example.mychat.data.storage.StorageConstants.KEY_TIMESTAMP
 import com.example.mychat.data.storage.StorageConstants.KEY_USERS_ID_ARRAY
@@ -45,7 +43,10 @@ import kotlin.coroutines.suspendCoroutine
 class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBaseUserStorage {
     val TAG = "FIREBASE_STORAGE"
 
-    override suspend fun userRegistration(user: User, flow: FlowCollector<ResultData<User>>): User? {
+    override suspend fun userRegistration(
+        user: User,
+        flow: FlowCollector<ResultData<User>>,
+    ): User? {
         val authData = AuthData(email = user.email, password = user.password)
         val isUserExist = checkUserExistAuthorization(authData = authData)
 
@@ -61,7 +62,8 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                 KEY_EMAIL to user.email,
                 KEY_PASSWORD to user.password,
             )
-            val userRef: DocumentReference = firestoreDb.collection(KEY_COLLECTION_USERS).add(userHashMap).await()
+            val userRef: DocumentReference =
+                firestoreDb.collection(KEY_COLLECTION_USERS).add(userHashMap).await()
             val newUser = User(
                 id = userRef.id,
                 name = user.name,
@@ -140,7 +142,11 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                 }
         }
     }
-    override suspend fun userAuthorization(authData: AuthData, flow: FlowCollector<ResultData<User>>): User? {
+
+    override suspend fun userAuthorization(
+        authData: AuthData,
+        flow: FlowCollector<ResultData<User>>,
+    ): User? {
         val user: User? = findUser(authData)
 
         if (user != null) {
@@ -175,22 +181,16 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         }
     }
 
-    override suspend fun getAllUsers(): List<User>? {
-        return suspendCoroutine {
-            val list: MutableList<User> = mutableListOf()
-            val documentReference = firestoreDb.collection(KEY_COLLECTION_USERS)
+    override suspend fun getAllUsers(flow: FlowCollector<ResultData<List<User>>>): List<User>? {
+        val usersRef = firestoreDb.collection(KEY_COLLECTION_USERS)
 
-            documentReference.get()
-                .addOnSuccessListener { task ->
-                    for (userSnapShot in task.documents) {
-                        val user = getUserFromSnapShot(userSnapShot)
-                        list.add(user)
-                    }
-                    it.resume(list.toList())
-                }
-                .addOnFailureListener { _ ->
-                    it.resume(null)
-                }
+        try {
+            val users: List<User> = usersRef.get().await().map { getUserFromSnapShot(it) }
+            flow.emit(ResultData.success(users))
+            return users
+        } catch (error: FirebaseFirestoreException) {
+            flow.emit(ResultData.failure(error.localizedMessage))
+            return null
         }
     }
 
@@ -198,7 +198,8 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         return suspendCoroutine {
             val documentReference = firestoreDb.collection(KEY_COLLECTION_CHAT)
             val chatRef = firestoreDb.collection(KEY_COLLECTION_CHATS).document(chatMessage.chat.id)
-            val senderRef = firestoreDb.collection(KEY_COLLECTION_USERS).document(chatMessage.sender.id)
+            val senderRef =
+                firestoreDb.collection(KEY_COLLECTION_USERS).document(chatMessage.sender.id)
             val messageHashMap = hashMapOf(
                 KEY_CHAT_ID to chatRef,
                 KEY_SENDER_ID to senderRef,
@@ -241,8 +242,11 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                             val date: Date = doc.document.getDate(KEY_TIMESTAMP)!!
 
                             // Find User
-                            val senderId: String = doc.document.getDocumentReference(KEY_SENDER_ID)!!.id
-                            val senderSnapshot = firestoreDb.collection(KEY_COLLECTION_USERS).document(senderId).get().await()
+                            val senderId: String =
+                                doc.document.getDocumentReference(KEY_SENDER_ID)!!.id
+                            val senderSnapshot =
+                                firestoreDb.collection(KEY_COLLECTION_USERS).document(senderId)
+                                    .get().await()
                             val sender: User = getUserFromSnapShot(senderSnapshot)
 
                             val chatMessage = ChatMessage(

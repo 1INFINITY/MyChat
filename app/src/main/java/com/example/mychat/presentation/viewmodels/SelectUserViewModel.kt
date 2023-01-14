@@ -32,9 +32,8 @@ class SelectUserViewModel(private val repository: UserRepository) :
     }
 
     init {
-        repository.uploadUserList()
         viewModelScope.launch {
-            repository.observeUserListResult().collectLatest { state ->
+            repository.uploadUserList().collectLatest { state ->
                 when (state) {
                     is ResultData.Success -> {
                         setState {

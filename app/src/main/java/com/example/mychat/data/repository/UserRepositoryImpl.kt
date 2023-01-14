@@ -24,35 +24,11 @@ class UserRepositoryImpl(
 ) : UserRepository {
 
     private val appScope: CoroutineScope = GlobalScope
-
-    private val userListResult = MutableSharedFlow<ResultData<List<User>>>()
-    override fun observeUserListResult() = userListResult.asSharedFlow()
-
     private val signOutResult = MutableSharedFlow<ResultData<Boolean>>()
-    override fun observeSignOutResult() = signOutResult.asSharedFlow()
 
-    private val authResult = MutableSharedFlow<ResultData<User>>()
-    override fun observeAuthResult() = authResult.asSharedFlow()
-
-    private val registrationResult = MutableSharedFlow<ResultData<User>>()
-    override fun observeRegistration() = registrationResult.asSharedFlow()
-
-    private val messagesResult = MutableSharedFlow<ResultData<List<ChatMessage>>>()
-    override fun observeMessages(): SharedFlow<ResultData<List<ChatMessage>>> =
-        messagesResult.asSharedFlow()
-
-    override fun uploadUserList() {
-        appScope.launch {
-            userListResult.emit(ResultData.loading(null))
-
-            val result: List<User>? = firebaseStorage.getAllUsers()
-
-            if (result != null) {
-                userListResult.emit(ResultData.success(result))
-            } else {
-                userListResult.emit(ResultData.failure("Something goes wrong"))
-            }
-        }
+    override fun uploadUserList() = flow<ResultData<List<User>>> {
+        emit(ResultData.loading(null))
+        firebaseStorage.getAllUsers(flow = this)
     }
 
     override fun signOut() {

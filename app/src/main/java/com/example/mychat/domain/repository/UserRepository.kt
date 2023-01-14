@@ -8,23 +8,13 @@ import kotlinx.coroutines.flow.*
 
 interface UserRepository {
 
-    fun observeUserListResult(): SharedFlow<ResultData<List<User>>>
-
-    fun observeSignOutResult(): SharedFlow<ResultData<Boolean>>
-
-    fun observeAuthResult(): SharedFlow<ResultData<User>>
-
-    fun observeRegistration(): SharedFlow<ResultData<User>>
-
-    fun observeMessages(): SharedFlow<ResultData<List<ChatMessage>>>
-
-    fun uploadUserList()
+    fun uploadUserList(): Flow<ResultData<List<User>>>
 
     fun signOut()
 
-    fun userRegistration(user: User) : Flow<ResultData<User>>
+    fun userRegistration(user: User): Flow<ResultData<User>>
 
-    fun userAuthorization(authData: AuthData) : Flow<ResultData<User>>
+    fun userAuthorization(authData: AuthData): Flow<ResultData<User>>
 
     fun getCachedUser(): User
 
@@ -32,9 +22,9 @@ interface UserRepository {
 
     fun listenMessages(chat: Chat): Flow<ResultData<List<ChatMessage>>>
 
-    fun createNewChat(users: List<User>) : Flow<ResultData<Chat>>
+    fun createNewChat(users: List<User>): Flow<ResultData<Chat>>
 
-    fun openChat(chat: Chat) : Flow<ResultData<Chat>>
+    fun openChat(chat: Chat): Flow<ResultData<Chat>>
 
     fun fetchChats(user: User): Flow<ResultData<List<Chat>>>
 }
