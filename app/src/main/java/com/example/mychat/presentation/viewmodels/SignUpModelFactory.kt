@@ -4,13 +4,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.example.mychat.domain.repository.UserRepository
 
-class SingUpModelFactory(
+class SignUpModelFactory(
     val repository: UserRepository,
 ) : ViewModelProvider.Factory {
 
 
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return SingUpViewModel(
+        return SignUpViewModel(
             repository = repository
         ) as T
     }

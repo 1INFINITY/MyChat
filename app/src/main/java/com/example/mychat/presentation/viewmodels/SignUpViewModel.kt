@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 import java.io.FileDescriptor
 import java.io.IOException
 
-class SingUpViewModel(private val repository: UserRepository) :
+class SignUpViewModel(private val repository: UserRepository) :
     BaseViewModel<SignUpContract.Event, SignUpContract.State, SignUpContract.Effect>() {
 
     private var profileImageBitmap: Bitmap? = null

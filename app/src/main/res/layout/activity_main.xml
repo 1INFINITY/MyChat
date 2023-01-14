@@ -10,11 +10,11 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
         <androidx.fragment.app.FragmentContainerView
-            android:name="com.example.mychat.presentation.view.SingInFragment"
+            android:name="com.example.mychat.presentation.view.SignInFragment"
             android:id="@+id/sign_in_fragment"
             android:layout_weight="1"
             android:layout_width="0dp"
             android:layout_height="match_parent"
-            tools:layout="@layout/fragment_sing_in" />
+            tools:layout="@layout/fragment_sign_in" />
     </LinearLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

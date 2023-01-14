@@ -24,7 +24,7 @@ interface UserRepository {
 
     fun userRegistration(user: User) : Flow<ResultData<User>>
 
-    fun userAuthorization(authData: AuthData)
+    fun userAuthorization(authData: AuthData) : Flow<ResultData<User>>
 
     fun getCachedUser(): User
 

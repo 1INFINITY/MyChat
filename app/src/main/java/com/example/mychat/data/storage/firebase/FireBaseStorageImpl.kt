@@ -140,6 +140,18 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                 }
         }
     }
+    override suspend fun userAuthorization(authData: AuthData, flow: FlowCollector<ResultData<User>>): User? {
+        val user: User? = findUser(authData)
+
+        if (user != null) {
+            updateToken(userId = user.id)
+            flow.emit(ResultData.success(user))
+            return user
+        } else {
+            flow.emit(ResultData.failure("Something goes wrong"))
+            return null
+        }
+    }
 
     override suspend fun updateToken(userId: String) {
         val documentReference = firestoreDb.collection(KEY_COLLECTION_USERS).document(userId)

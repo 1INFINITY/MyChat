@@ -84,19 +84,12 @@ class UserRepositoryImpl(
         }
     }
 
-    override fun userAuthorization(authData: AuthData) {
-        appScope.launch {
-            authResult.emit(ResultData.loading(null))
+    override fun userAuthorization(authData: AuthData) = flow<ResultData<User>> {
+        emit(ResultData.loading(null))
+        val user = firebaseStorage.userAuthorization(authData = authData, flow = this)
 
-            val result: User? = firebaseStorage.findUser(authData)
-
-            if (result != null) {
-                sharedPrefsStorage.saveUserDetails(user = result)
-                firebaseStorage.updateToken(userId = result.id)
-                authResult.emit(ResultData.success(result))
-            } else {
-                authResult.emit(ResultData.failure("Something goes wrong"))
-            }
+        user?.let{
+            sharedPrefsStorage.saveUserDetails(user = it)
         }
     }
 

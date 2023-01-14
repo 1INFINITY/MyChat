@@ -1,38 +1,31 @@
 package com.example.mychat.presentation.view
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import com.example.mychat.R
 import com.example.mychat.data.repository.UserRepositoryImpl
 import com.example.mychat.data.storage.firebase.FireBaseStorageImpl
 import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorageImpl
-import com.example.mychat.databinding.FragmentSelectUserBinding
 import com.example.mychat.databinding.FragmentSignUpBinding
-import com.example.mychat.domain.repository.ResultData
-import com.example.mychat.presentation.viewmodels.SingUpModelFactory
-import com.example.mychat.presentation.viewmodels.SingUpViewModel
-import com.example.mychat.presentation.viewmodels.сontracts.SelectUserContract
+import com.example.mychat.presentation.viewmodels.SignUpModelFactory
+import com.example.mychat.presentation.viewmodels.SignUpViewModel
 import com.example.mychat.presentation.viewmodels.сontracts.SignUpContract
 import com.google.android.material.imageview.ShapeableImageView
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
 
 
 class SignUpFragment : Fragment() {
 
-    private lateinit var vm: SingUpViewModel
+    private lateinit var vm: SignUpViewModel
     private lateinit var binding: FragmentSignUpBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -43,11 +36,11 @@ class SignUpFragment : Fragment() {
         val repository =
             UserRepositoryImpl(firebaseStorage = storage, sharedPrefsStorage = sharedPrefs)
 
-        val vmFactory: SingUpModelFactory = SingUpModelFactory(repository)
+        val vmFactory: SignUpModelFactory = SignUpModelFactory(repository)
 
         super.onCreate(savedInstanceState)
         vm = ViewModelProvider(this, vmFactory)
-            .get(SingUpViewModel::class.java)
+            .get(SignUpViewModel::class.java)
 
 
     }
@@ -107,7 +100,7 @@ class SignUpFragment : Fragment() {
                         Toast.makeText(requireActivity(), it.message, Toast.LENGTH_SHORT).show()
                     }
                     is SignUpContract.Effect.ToSignInFragment -> {
-                        switchPage(fragment = SingInFragment())
+                        switchPage(fragment = SignInFragment())
                     }
                 }
             }
