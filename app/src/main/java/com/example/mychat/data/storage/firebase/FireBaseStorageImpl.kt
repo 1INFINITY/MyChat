@@ -161,23 +161,19 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
 
     override suspend fun updateToken(userId: String) {
         val documentReference = firestoreDb.collection(KEY_COLLECTION_USERS).document(userId)
-        val token = FirebaseMessaging.getInstance().token
-        documentReference.update(KEY_FCM_TOKEN, token).addOnFailureListener() { task ->
-            task.message
-        }
+        val token: String = FirebaseMessaging.getInstance().token.await()
+        documentReference.update(KEY_FCM_TOKEN, token)
     }
 
-    override suspend fun deleteUserFieldById(userId: String, fieldName: String): Boolean {
-        return suspendCoroutine {
-            val documentReference = firestoreDb.collection(KEY_COLLECTION_USERS).document(userId)
-            documentReference.update(fieldName, FieldValue.delete())
-                .addOnCompleteListener { task ->
-                    if (task.isSuccessful) {
-                        it.resume(true)
-                    } else {
-                        it.resume(false)
-                    }
-                }
+    override suspend fun signOutUser(user: User, flow: FlowCollector<ResultData<Boolean>>): Boolean {
+        val usersRef = firestoreDb.collection(KEY_COLLECTION_USERS)
+        try {
+            usersRef.document(user.id).update(KEY_FCM_TOKEN , FieldValue.delete()).await()
+            flow.emit(ResultData.success(true))
+            return true
+        } catch (error: FirebaseFirestoreException) {
+            flow.emit(ResultData.failure(error.localizedMessage))
+            return false
         }
     }
 

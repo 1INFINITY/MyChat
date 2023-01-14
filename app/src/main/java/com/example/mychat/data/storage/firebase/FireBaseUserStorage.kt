@@ -20,7 +20,7 @@ interface FireBaseUserStorage {
 
     suspend fun updateToken(userId: String)
 
-    suspend fun deleteUserFieldById(userId: String, fieldName: String): Boolean
+    suspend fun signOutUser(user: User, flow: FlowCollector<ResultData<Boolean>>): Boolean
 
     suspend fun getAllUsers(flow: FlowCollector<ResultData<List<User>>>): List<User>?
 

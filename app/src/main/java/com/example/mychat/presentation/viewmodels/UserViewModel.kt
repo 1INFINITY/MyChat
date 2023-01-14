@@ -17,6 +17,7 @@ class UserViewModel(private val repository: UserRepository) :
 
     private var chats: MutableList<Chat> = mutableListOf()
     private lateinit var user: User
+
     /**
      * Create initial State of Views
      */
@@ -31,8 +32,7 @@ class UserViewModel(private val repository: UserRepository) :
     override fun handleEvent(event: UserContract.Event) {
         when (event) {
             is UserContract.Event.OnSignOutClicked -> {
-                repository.signOut()
-                setEffect { UserContract.Effect.ChangeFragment(SignInFragment()) }
+                signOut()
             }
             is UserContract.Event.OnChatClicked -> {
                 val chat = event.chat
@@ -87,6 +87,32 @@ class UserViewModel(private val repository: UserRepository) :
         }
     }
 
+    fun signOut() {
+        viewModelScope.launch {
+            repository.signOut().collect { result ->
+                when (result) {
+                    is ResultData.Success -> {
+                        setEffect { UserContract.Effect.ChangeFragment(SignInFragment()) }
+                    }
+                    is ResultData.Loading -> {
+                        setState {
+                            copy(
+                                recyclerViewState = UserContract.RecyclerViewState.Loading
+                            )
+                        }
+                    }
+                    is ResultData.Failure -> {
+                        setState {
+                            copy(
+                                recyclerViewState = UserContract.RecyclerViewState.Error(result.message)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fun getMainUser(): User {
         return repository.getCachedUser()
     }
@@ -107,7 +133,6 @@ class UserViewModel(private val repository: UserRepository) :
                         // Todo: Create effect fragment switch error
                     }
                 }
-
             }
         }
     }

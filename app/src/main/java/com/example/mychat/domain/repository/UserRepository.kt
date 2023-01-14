@@ -10,7 +10,7 @@ interface UserRepository {
 
     fun uploadUserList(): Flow<ResultData<List<User>>>
 
-    fun signOut()
+    fun signOut(): Flow<ResultData<Boolean>>
 
     fun userRegistration(user: User): Flow<ResultData<User>>
 
