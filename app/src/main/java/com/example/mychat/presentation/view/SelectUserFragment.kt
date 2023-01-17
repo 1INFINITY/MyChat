@@ -128,7 +128,6 @@ class SelectUserFragment : Fragment(), UserListener {
         }
         requireActivity().supportFragmentManager.beginTransaction()
             .replace(this.id, fragment)
-            .addToBackStack(null)
             .commit()
     }
 

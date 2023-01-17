@@ -14,12 +14,15 @@ import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorageImpl
 import com.example.mychat.databinding.FragmentUserBinding
 import com.example.mychat.domain.models.Chat
 import com.example.mychat.presentation.adapters.RecentChatsAdapter
+import com.example.mychat.presentation.app.App
 import com.example.mychat.presentation.listeners.ChatListener
 import com.example.mychat.presentation.viewmodels.UserModelFactory
 import com.example.mychat.presentation.viewmodels.UserViewModel
+import com.example.mychat.presentation.viewmodels.ViewModelFactory
 import com.example.mychat.presentation.viewmodels.сontracts.UserContract.*
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
+import javax.inject.Inject
 
 class UserFragment : Fragment(), ChatListener {
 
@@ -27,19 +30,13 @@ class UserFragment : Fragment(), ChatListener {
     private lateinit var binding: FragmentUserBinding
     private lateinit var adapter: RecentChatsAdapter
 
+    private  lateinit var vmFactory: ViewModelFactory
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val db = Firebase.firestore
-        val storage = FireBaseStorageImpl(firestoreDb = db)
-        val sharedPrefs =
-            SharedPreferencesStorageImpl(appContext = requireActivity().applicationContext)
-        val repository =
-            UserRepositoryImpl(firebaseStorage = storage, sharedPrefsStorage = sharedPrefs)
-
-        val vmFactory = UserModelFactory(repository)
-        vm = ViewModelProvider(this, vmFactory)
-            .get(UserViewModel::class.java)
+        vmFactory = (requireActivity().applicationContext as App).appComponent.getViewModelFactory()
+        vm = ViewModelProvider(this, vmFactory)[UserViewModel::class.java]
 
         adapter = RecentChatsAdapter(mainUser = vm.getMainUser(), this)
 
