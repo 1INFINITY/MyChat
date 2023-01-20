@@ -36,7 +36,9 @@ class UserContract {
     sealed class Effect : UiEffect {
         data class ShowToast(val message: String) : Effect()
         data class ShowRecyclerFailure(val message: String) : Effect()
-        data class ChangeFragment(val fragment: Fragment) : Effect()
+        object ToSelectUserFragment : Effect()
+        data class ToChatFragment(val chatId: String) : Effect()
+        object ToBackFragment : Effect()
     }
 
 }

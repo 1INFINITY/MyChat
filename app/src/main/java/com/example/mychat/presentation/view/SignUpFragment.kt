@@ -9,39 +9,32 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import com.example.mychat.R
-import com.example.mychat.data.repository.UserRepositoryImpl
-import com.example.mychat.data.storage.firebase.FireBaseStorageImpl
-import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorageImpl
 import com.example.mychat.databinding.FragmentSignUpBinding
-import com.example.mychat.presentation.viewmodels.SignUpModelFactory
+import com.example.mychat.presentation.app.App
 import com.example.mychat.presentation.viewmodels.SignUpViewModel
+import com.example.mychat.presentation.viewmodels.ViewModelFactory
 import com.example.mychat.presentation.viewmodels.сontracts.SignUpContract
 import com.google.android.material.imageview.ShapeableImageView
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.collectLatest
+import javax.inject.Inject
 
 
 class SignUpFragment : Fragment() {
+
+    @Inject
+    lateinit var vmFactory: ViewModelFactory
 
     private lateinit var vm: SignUpViewModel
     private lateinit var binding: FragmentSignUpBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        val db = Firebase.firestore
-        val storage = FireBaseStorageImpl(firestoreDb = db)
-        val sharedPrefs =
-            SharedPreferencesStorageImpl(appContext = requireActivity().applicationContext)
-        val repository =
-            UserRepositoryImpl(firebaseStorage = storage, sharedPrefsStorage = sharedPrefs)
-
-        val vmFactory: SignUpModelFactory = SignUpModelFactory(repository)
-
         super.onCreate(savedInstanceState)
+
+        (requireActivity().applicationContext as App).appComponent.inject(this)
         vm = ViewModelProvider(this, vmFactory)
             .get(SignUpViewModel::class.java)
-
 
     }
 
@@ -100,7 +93,7 @@ class SignUpFragment : Fragment() {
                         Toast.makeText(requireActivity(), it.message, Toast.LENGTH_SHORT).show()
                     }
                     is SignUpContract.Effect.ToSignInFragment -> {
-                        switchPage(fragment = SignInFragment())
+                        findNavController().popBackStack()
                     }
                 }
             }

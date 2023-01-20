@@ -293,17 +293,48 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         }
     }
 
-    override suspend fun openChat(chat: Chat, flow: FlowCollector<ResultData<Chat>>) {
+    override suspend fun openChat(chatId: String, flow: FlowCollector<ResultData<Chat>>) {
         try {
             val savedChatSnapshot: DocumentSnapshot = firestoreDb
                 .collection(KEY_COLLECTION_CHATS)
-                .document(chat.id)
+                .document(chatId)
                 .get().await()
+
+            // TODO: Need Refactoring
+            val usersRefs =
+                (savedChatSnapshot.get(KEY_USERS_ID_ARRAY) as ArrayList<DocumentReference>)
+            val tasks: List<Task<DocumentSnapshot>> = usersRefs.map { it.get() }
+            val allTask: Task<List<DocumentSnapshot>> = Tasks.whenAllSuccess(tasks)
+            val users = mutableListOf<User>()
+            allTask.addOnSuccessListener {
+                for (documentSnapshot in it) {
+                    if (documentSnapshot != null) {
+                        val id = documentSnapshot.id as String
+                        val name = documentSnapshot.get(KEY_NAME) as String
+                        val imageStr = documentSnapshot.get(KEY_IMAGE) as String
+                        val email = documentSnapshot.get(KEY_EMAIL) as String
+                        val password =
+                            documentSnapshot.get(KEY_PASSWORD) as String
+                        val bytes = Base64.decode(imageStr, Base64.DEFAULT)
+                        val image: Bitmap =
+                            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+
+                        val user = User(
+                            id = id,
+                            image = image,
+                            name = name,
+                            email = email,
+                            password = password
+                        )
+                        users.add(user)
+                    }
+                }
+            }.await()
 
             val savedChat = Chat(
                 id = savedChatSnapshot.id,
                 name = savedChatSnapshot.getString(KEY_CHAT_NAME),
-                users = chat.users,
+                users = users,
                 lastMessage = savedChatSnapshot.getString(KEY_LAST_MESSAGE)!!
             )
             flow.emit(ResultData.success(savedChat))

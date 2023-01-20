@@ -9,18 +9,24 @@ import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
 import com.example.mychat.presentation.viewmodels.base.BaseViewModel
 import com.example.mychat.presentation.viewmodels.сontracts.ChatContract
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.util.*
 
 class ChatViewModel(
-    private val chat: Chat,
     private val repository: UserRepository,
 ) :
     BaseViewModel<ChatContract.Event, ChatContract.State, ChatContract.Effect>() {
 
+
+    private lateinit var chat: Chat
     private lateinit var userSender: User
     private lateinit var userReceiver: User
+    private var chatListenJob: Job? = null
     private var messages: MutableList<ChatMessage> = mutableListOf()
 
     override fun createInitialState(): ChatContract.State {
@@ -40,14 +46,39 @@ class ChatViewModel(
             }
             is ChatContract.Event.OnBackButtonClicked -> {
                 // Todo: make it in correct way
-                setEffect { ChatContract.Effect.ChangeFragment(null) }
+                setEffect { ChatContract.Effect.ToBackFragment }
             }
         }
     }
 
-    init {
-        viewModelScope.launch {
-
+    fun listenChatWithId(chatId: String) {
+        chatListenJob?.let {
+            if(chatId == chat.id)
+                return
+            it.cancel()
+        }
+        chatListenJob = viewModelScope.launch {
+            repository.openChat(chatId = chatId).collect {
+                when(it) {
+                    is ResultData.Success -> {
+                        chat = it.value
+                    }
+                    is ResultData.Loading -> {
+                        setState {
+                            copy(
+                                recyclerViewState = ChatContract.RecyclerViewState.Loading
+                            )
+                        }
+                    }
+                    is ResultData.Failure -> {
+                        setState {
+                            copy(
+                                recyclerViewState = ChatContract.RecyclerViewState.Error(it.message)
+                            )
+                        }
+                    }
+                }
+            }
             userSender = repository.getCachedUser()
             userReceiver = chat.users.find { it.id != userSender.id } ?: userSender
             setState {

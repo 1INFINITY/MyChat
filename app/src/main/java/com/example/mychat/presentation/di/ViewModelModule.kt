@@ -1,10 +1,9 @@
 package com.example.mychat.presentation.di
 
 import androidx.lifecycle.ViewModel
+import com.example.mychat.domain.models.Chat
 import com.example.mychat.domain.repository.UserRepository
-import com.example.mychat.presentation.viewmodels.SelectUserViewModel
-import com.example.mychat.presentation.viewmodels.UserViewModel
-import com.example.mychat.presentation.viewmodels.ViewModelFactory
+import com.example.mychat.presentation.viewmodels.*
 import dagger.MapKey
 import dagger.Module
 import dagger.Provides
@@ -24,6 +23,21 @@ class ViewModelModule {
 //        return ViewModelFactory(viewModelProviders = viewModelProviders)
 //    }
 
+
+    @IntoMap
+    @ViewModelKey(SignUpViewModel::class)
+    @Provides
+    fun provideSignUpViewModel(repository: UserRepository): ViewModel {
+        return SignUpViewModel(repository = repository)
+    }
+
+    @IntoMap
+    @ViewModelKey(SignInViewModel::class)
+    @Provides
+    fun provideSignInViewModel(repository: UserRepository): ViewModel {
+        return SignInViewModel(repository = repository)
+    }
+
     @IntoMap
     @ViewModelKey(UserViewModel::class)
     @Provides
@@ -34,8 +48,14 @@ class ViewModelModule {
     @IntoMap
     @ViewModelKey(SelectUserViewModel::class)
     @Provides
-    fun provideChatViewModel(repository: UserRepository): ViewModel {
+    fun provideSelectUserViewModel(repository: UserRepository): ViewModel {
         return SelectUserViewModel(repository = repository)
     }
 
+    @IntoMap
+    @ViewModelKey(ChatViewModel::class)
+    @Provides
+    fun provideChatViewModel(repository: UserRepository): ViewModel {
+        return ChatViewModel(repository = repository)
+    }
 }

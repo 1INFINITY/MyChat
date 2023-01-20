@@ -73,9 +73,9 @@ class UserRepositoryImpl(
         firebaseStorage.createNewChat(users = users, flow = this)
     }
 
-    override fun openChat(chat: Chat) = flow<ResultData<Chat>> {
+    override fun openChat(chatId: String) = flow<ResultData<Chat>> {
         emit(ResultData.loading(null))
-        firebaseStorage.openChat(chat = chat, flow = this)
+        firebaseStorage.openChat(chatId = chatId, flow = this)
     }
 
     override fun fetchChats(user: User) = callbackFlow<ResultData<List<Chat>>> {

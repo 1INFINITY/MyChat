@@ -36,14 +36,14 @@ class UserViewModel(private val repository: UserRepository) :
             }
             is UserContract.Event.OnChatClicked -> {
                 val chat = event.chat
-                tryOpenChat(chat = chat)
+                setEffect { UserContract.Effect.ToChatFragment(chatId = chat.id)}
             }
             is UserContract.Event.OnBackButtonClicked -> {
                 // Todo: make it in correct way
-                setEffect { UserContract.Effect.ChangeFragment(SignInFragment()) }
+                setEffect { UserContract.Effect.ToBackFragment}
             }
             is UserContract.Event.OnFloatingButtonClicked -> {
-                setEffect { UserContract.Effect.ChangeFragment(SelectUserFragment()) }
+                setEffect { UserContract.Effect.ToSelectUserFragment }
             }
         }
     }
@@ -92,7 +92,7 @@ class UserViewModel(private val repository: UserRepository) :
             repository.signOut().collect { result ->
                 when (result) {
                     is ResultData.Success -> {
-                        setEffect { UserContract.Effect.ChangeFragment(SignInFragment()) }
+                        setEffect { UserContract.Effect.ToBackFragment }
                     }
                     is ResultData.Loading -> {
                         setState {
@@ -117,25 +117,6 @@ class UserViewModel(private val repository: UserRepository) :
         return repository.getCachedUser()
     }
 
-    private fun tryOpenChat(chat: Chat) {
-        viewModelScope.launch {
-            repository.openChat(chat).collect { state ->
-                when (state) {
-                    is ResultData.Success -> {
-                        setEffect {
-                            UserContract.Effect.ChangeFragment(ChatFragment(state.value))
-                        }
-                    }
-                    is ResultData.Loading -> {
-                        // Todo: Create effect fragment loading
-                    }
-                    is ResultData.Failure -> {
-                        // Todo: Create effect fragment switch error
-                    }
-                }
-            }
-        }
-    }
 
     private fun chatsUpdate(updates: List<Chat>) {
         updates.map { chat ->

@@ -11,6 +11,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.mychat.R
 import com.example.mychat.data.repository.UserRepositoryImpl
@@ -22,6 +23,7 @@ import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
 import com.example.mychat.presentation.adapters.UserAdapter
+import com.example.mychat.presentation.app.App
 import com.example.mychat.presentation.listeners.UserListener
 import com.example.mychat.presentation.viewmodels.*
 import com.example.mychat.presentation.viewmodels.сontracts.ChatContract
@@ -30,9 +32,13 @@ import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 
 class SelectUserFragment : Fragment(), UserListener {
+
+    @Inject
+    lateinit var vmFactory: ViewModelFactory
 
     private lateinit var binding: FragmentSelectUserBinding
     private lateinit var adapter: UserAdapter
@@ -40,16 +46,9 @@ class SelectUserFragment : Fragment(), UserListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val db = Firebase.firestore
-        val storage = FireBaseStorageImpl(firestoreDb = db)
-        val sharedPrefs =
-            SharedPreferencesStorageImpl(appContext = requireActivity().applicationContext)
-        val repository =
-            UserRepositoryImpl(firebaseStorage = storage, sharedPrefsStorage = sharedPrefs)
 
-        val vmFactory = SelectUserModelFactory(repository = repository)
-        vm = ViewModelProvider(this, vmFactory)
-            .get(SelectUserViewModel::class.java)
+        (requireActivity().applicationContext as App).appComponent.inject(this)
+        vm = ViewModelProvider(this, vmFactory)[SelectUserViewModel::class.java]
     }
 
     override fun onCreateView(
@@ -98,12 +97,10 @@ class SelectUserFragment : Fragment(), UserListener {
                         Toast.makeText(requireActivity(), it.message, Toast.LENGTH_SHORT).show()
                     }
                     is SelectUserContract.Effect.ToBackFragment -> {
-                        switchPage(fragment = null)
+                        findNavController().popBackStack()
                     }
                     is SelectUserContract.Effect.ToChatFragment -> {
-                        switchPage(
-                            fragment = ChatFragment(chat = it.chat)
-                        )
+                        findNavController().navigate(R.id.action_selectUserFragment_to_chatFragment)
                     }
                 }
             }
@@ -119,16 +116,6 @@ class SelectUserFragment : Fragment(), UserListener {
             binding.progressBar.visibility = View.INVISIBLE
             binding.textError.visibility = View.VISIBLE
         }
-    }
-
-    private fun switchPage(fragment: Fragment?) {
-        if (fragment == null) {
-            requireActivity().supportFragmentManager.popBackStack()
-            return
-        }
-        requireActivity().supportFragmentManager.beginTransaction()
-            .replace(this.id, fragment)
-            .commit()
     }
 
     override fun onUserClicked(user: User) {

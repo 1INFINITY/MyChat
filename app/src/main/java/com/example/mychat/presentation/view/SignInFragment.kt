@@ -4,41 +4,33 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
 import com.example.mychat.R
-import com.example.mychat.data.repository.UserRepositoryImpl
-import com.example.mychat.data.storage.firebase.FireBaseStorageImpl
-import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorageImpl
 import com.example.mychat.databinding.FragmentSignInBinding
-import com.example.mychat.presentation.viewmodels.SignInModelFactory
+import com.example.mychat.presentation.app.App
 import com.example.mychat.presentation.viewmodels.SignInViewModel
+import com.example.mychat.presentation.viewmodels.ViewModelFactory
 import com.example.mychat.presentation.viewmodels.сontracts.SignInContract
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.collectLatest
+import javax.inject.Inject
 
 
 class SignInFragment : Fragment() {
+
+    @Inject
+    lateinit var vmFactory: ViewModelFactory
 
     private lateinit var vm: SignInViewModel
     private lateinit var binding: FragmentSignInBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val db = Firebase.firestore
-        val storage = FireBaseStorageImpl(firestoreDb = db)
-        val sharedPrefs =
-            SharedPreferencesStorageImpl(appContext = requireActivity().applicationContext)
-        val repository =
-            UserRepositoryImpl(firebaseStorage = storage, sharedPrefsStorage = sharedPrefs)
 
-        val vmFactory = SignInModelFactory(repository)
+        (requireActivity().applicationContext as App).appComponent.inject(this)
         vm = ViewModelProvider(this, vmFactory)
             .get(SignInViewModel::class.java)
     }
@@ -90,10 +82,10 @@ class SignInFragment : Fragment() {
                         Toast.makeText(requireActivity(), it.message, Toast.LENGTH_SHORT).show()
                     }
                     is SignInContract.Effect.ToUserFragment -> {
-                        switchPage(fragment = UserFragment())
+                        findNavController().navigate(R.id.action_signInFragment_to_userFragment)
                     }
                     is SignInContract.Effect.ToSignUpFragment -> {
-                        switchPage(fragment = SignUpFragment())
+                        findNavController().navigate(R.id.action_signInFragment_to_signUpFragment)
                     }
                 }
             }
@@ -117,12 +109,5 @@ class SignInFragment : Fragment() {
             binding.buttonSignIn.visibility = View.VISIBLE
             binding.progressBar.visibility = View.INVISIBLE
         }
-    }
-
-    private fun switchPage(fragment: Fragment) {
-        requireActivity().supportFragmentManager.beginTransaction()
-            .replace(this.id, fragment)
-            .addToBackStack(null)
-            .commit()
     }
 }

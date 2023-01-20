@@ -8,38 +8,41 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
+import androidx.navigation.fragment.findNavController
+import androidx.navigation.fragment.navArgs
 import com.example.mychat.data.repository.UserRepositoryImpl
 import com.example.mychat.data.storage.firebase.FireBaseStorageImpl
 import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorageImpl
 import com.example.mychat.databinding.FragmentChatBinding
 import com.example.mychat.domain.models.Chat
 import com.example.mychat.presentation.adapters.ChatAdapter
+import com.example.mychat.presentation.app.App
 import com.example.mychat.presentation.viewmodels.ChatModelFactory
 import com.example.mychat.presentation.viewmodels.ChatViewModel
+import com.example.mychat.presentation.viewmodels.UserViewModel
+import com.example.mychat.presentation.viewmodels.ViewModelFactory
 import com.example.mychat.presentation.viewmodels.сontracts.ChatContract
 import com.google.firebase.firestore.ktx.firestore
 import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.collectLatest
+import javax.inject.Inject
 
-class ChatFragment(val chat: Chat) : Fragment() {
+class ChatFragment: Fragment() {
+
+    @Inject
+    lateinit var vmFactory: ViewModelFactory
 
     private lateinit var vm: ChatViewModel
     private lateinit var binding: FragmentChatBinding
     private lateinit var adapter: ChatAdapter
+    private val args: ChatFragmentArgs by navArgs()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val db = Firebase.firestore
-        val storage = FireBaseStorageImpl(firestoreDb = db)
-        val sharedPrefs =
-            SharedPreferencesStorageImpl(appContext = requireActivity().applicationContext)
-        val repository =
-            UserRepositoryImpl(firebaseStorage = storage, sharedPrefsStorage = sharedPrefs)
 
-        val vmFactory = ChatModelFactory(chat = chat, repository = repository)
-        vm = ViewModelProvider(this, vmFactory)
-            .get(ChatViewModel::class.java)
-
+        (requireActivity().applicationContext as App).appComponent.inject(this)
+        vm = ViewModelProvider(this, vmFactory)[ChatViewModel::class.java]
+        vm.listenChatWithId(chatId = args.chatId)
 
     }
 
@@ -83,8 +86,8 @@ class ChatFragment(val chat: Chat) : Fragment() {
                     is ChatContract.Effect.ShowToast -> {
                         Toast.makeText(requireActivity(), it.message, Toast.LENGTH_SHORT).show()
                     }
-                    is ChatContract.Effect.ChangeFragment -> {
-                        switchPage(it.fragment)
+                    is ChatContract.Effect.ToBackFragment -> {
+                        findNavController().popBackStack()
                     }
                 }
             }
@@ -116,16 +119,5 @@ class ChatFragment(val chat: Chat) : Fragment() {
         val message: String = binding.inputMessage.text.toString()
         vm.setEvent(ChatContract.Event.MessageSent(message = message))
         binding.inputMessage.text = null
-    }
-
-    private fun switchPage(fragment: Fragment?) {
-        if (fragment == null) {
-            requireActivity().supportFragmentManager.popBackStack()
-            return
-        }
-        requireActivity().supportFragmentManager.beginTransaction()
-            .replace(this.id, fragment)
-            .addToBackStack(null)
-            .commit()
     }
 }

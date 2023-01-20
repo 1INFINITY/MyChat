@@ -8,38 +8,33 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
-import com.example.mychat.data.repository.UserRepositoryImpl
-import com.example.mychat.data.storage.firebase.FireBaseStorageImpl
-import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorageImpl
+import androidx.navigation.fragment.findNavController
+import com.example.mychat.R
 import com.example.mychat.databinding.FragmentUserBinding
 import com.example.mychat.domain.models.Chat
 import com.example.mychat.presentation.adapters.RecentChatsAdapter
 import com.example.mychat.presentation.app.App
 import com.example.mychat.presentation.listeners.ChatListener
-import com.example.mychat.presentation.viewmodels.UserModelFactory
 import com.example.mychat.presentation.viewmodels.UserViewModel
 import com.example.mychat.presentation.viewmodels.ViewModelFactory
 import com.example.mychat.presentation.viewmodels.сontracts.UserContract.*
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
 import javax.inject.Inject
 
 class UserFragment : Fragment(), ChatListener {
+
+    @Inject
+    lateinit var vmFactory: ViewModelFactory
 
     private lateinit var vm: UserViewModel
     private lateinit var binding: FragmentUserBinding
     private lateinit var adapter: RecentChatsAdapter
 
-    private  lateinit var vmFactory: ViewModelFactory
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        vmFactory = (requireActivity().applicationContext as App).appComponent.getViewModelFactory()
+        (requireActivity().applicationContext as App).appComponent.inject(this)
         vm = ViewModelProvider(this, vmFactory)[UserViewModel::class.java]
-
         adapter = RecentChatsAdapter(mainUser = vm.getMainUser(), this)
-
     }
 
     override fun onCreateView(
@@ -98,20 +93,20 @@ class UserFragment : Fragment(), ChatListener {
                     is Effect.ShowToast -> {
                         Toast.makeText(requireActivity(), it.message, Toast.LENGTH_SHORT).show()
                     }
-                    is Effect.ChangeFragment -> {
-                        switchPage(it.fragment)
+                    is Effect.ToChatFragment -> {
+                        val action = UserFragmentDirections.actionUserFragmentToChatFragment(it.chatId)
+                        findNavController().navigate(action)
+                    }
+                    is Effect.ToBackFragment -> {
+                        findNavController().popBackStack()
+                    }
+                    is Effect.ToSelectUserFragment -> {
+                        findNavController().navigate(R.id.action_userFragment_to_selectUserFragment)
                     }
                 }
             }
         }
 
-    }
-
-    private fun switchPage(fragment: Fragment) {
-        requireActivity().supportFragmentManager.beginTransaction()
-            .replace(this.id, fragment)
-            .addToBackStack(null)
-            .commit()
     }
 
     private fun loading(isLoading: Boolean) {
