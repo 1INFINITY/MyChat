@@ -5,9 +5,6 @@ import com.example.mychat.domain.models.Chat
 import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
-import com.example.mychat.presentation.view.ChatFragment
-import com.example.mychat.presentation.view.SelectUserFragment
-import com.example.mychat.presentation.view.SignInFragment
 import com.example.mychat.presentation.viewmodels.base.BaseViewModel
 import com.example.mychat.presentation.viewmodels.сontracts.UserContract
 import kotlinx.coroutines.launch
@@ -36,11 +33,11 @@ class UserViewModel(private val repository: UserRepository) :
             }
             is UserContract.Event.OnChatClicked -> {
                 val chat = event.chat
-                setEffect { UserContract.Effect.ToChatFragment(chatId = chat.id)}
+                setEffect { UserContract.Effect.ToChatFragment(chatId = chat.id) }
             }
             is UserContract.Event.OnBackButtonClicked -> {
                 // Todo: make it in correct way
-                setEffect { UserContract.Effect.ToBackFragment}
+                setEffect { UserContract.Effect.ToBackFragment }
             }
             is UserContract.Event.OnFloatingButtonClicked -> {
                 setEffect { UserContract.Effect.ToSelectUserFragment }

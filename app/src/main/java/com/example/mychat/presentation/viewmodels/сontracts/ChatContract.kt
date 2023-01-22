@@ -13,6 +13,8 @@ class ChatContract {
     sealed class Event : UiEvent {
         object OnBackButtonClicked : Event()
         data class MessageSent(val message: String) : Event()
+        data class OnMessageDeleteClicked(val message: ChatMessage) : Event()
+        data class OnMessageChangeClicked(val message: ChatMessage) : Event()
     }
 
     // Ui View States

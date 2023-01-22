@@ -1,10 +1,6 @@
 package com.example.mychat.presentation.viewmodels
 
-import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.net.Uri
-import android.util.Log
 import android.util.Patterns
 import androidx.lifecycle.viewModelScope
 import com.example.mychat.domain.models.User
@@ -14,17 +10,12 @@ import com.example.mychat.presentation.viewmodels.base.BaseViewModel
 import com.example.mychat.presentation.viewmodels.сontracts.SignUpContract
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import java.io.FileDescriptor
-import java.io.IOException
 
 class SignUpViewModel(private val repository: UserRepository) :
     BaseViewModel<SignUpContract.Event, SignUpContract.State, SignUpContract.Effect>() {
 
     private var profileImage: Bitmap? = null
 
-    init {
-        Log.d("SignUpVM", "init")
-    }
     override fun createInitialState(): SignUpContract.State {
         return SignUpContract.State(
             profileImage = null,
@@ -115,7 +106,6 @@ class SignUpViewModel(private val repository: UserRepository) :
             password = password
         )
     }
-
 
 
     private fun isValidSignUpDetails(

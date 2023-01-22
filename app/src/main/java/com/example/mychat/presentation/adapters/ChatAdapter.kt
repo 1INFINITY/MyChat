@@ -8,11 +8,12 @@ import com.example.mychat.databinding.ItemContainerReceivedBinding
 import com.example.mychat.databinding.ItemContainerSentMessageBinding
 import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
+import com.example.mychat.presentation.listeners.ChatMessageListener
 import java.text.SimpleDateFormat
 import java.util.*
 
 class ChatAdapter(
-    private val sender: User,
+    private val sender: User, private val messageListener: ChatMessageListener,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     var messages: List<ChatMessage> = emptyList()
@@ -28,6 +29,7 @@ class ChatAdapter(
             binding.textMessage.text = msg.message
             binding.textDateTime.text = formatDate(msg.date)
         }
+
         private fun formatDate(date: Date): String {
             return SimpleDateFormat("MMMM dd, yyyy - hh:mm a", Locale.getDefault()).format(date)
         }
@@ -40,6 +42,7 @@ class ChatAdapter(
             binding.textDateTime.text = formatDate(msg.date)
             binding.imageProfile.setImageBitmap(msg.sender.image)
         }
+
         private fun formatDate(date: Date): String {
             return SimpleDateFormat("MMMM dd, yyyy - hh:mm a", Locale.getDefault()).format(date)
         }
@@ -70,6 +73,9 @@ class ChatAdapter(
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         if (getItemViewType(position) == ViewType.SENT.type) {
             (holder as SentMessageViewHolder).setData(messages[position])
+            (holder as SentMessageViewHolder).binding.root.setOnClickListener {
+                messageListener.onChatMessageClicked(message = messages[position])
+            }
         } else {
             (holder as ReceivedMessageViewHolder).setData(messages[position])
         }

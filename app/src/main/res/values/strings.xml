@@ -13,4 +13,8 @@
     <string name="login_to_continue">Login to continue</string>
     <string name="select_user">Select User</string>
     <string name="type_a_message">Type a message</string>
+    <array name="message_action">
+        <item>Delete</item>
+        <item>Change message</item>
+    </array>
 </resources>

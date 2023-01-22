@@ -1,5 +1,7 @@
 package com.example.mychat.presentation.view
 
+import android.app.AlertDialog
+import android.content.DialogInterface
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -10,16 +12,19 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
+import com.example.mychat.R
 import com.example.mychat.databinding.FragmentChatBinding
+import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.presentation.adapters.ChatAdapter
 import com.example.mychat.presentation.app.App
+import com.example.mychat.presentation.listeners.ChatMessageListener
 import com.example.mychat.presentation.viewmodels.ChatViewModel
 import com.example.mychat.presentation.viewmodels.ViewModelFactory
 import com.example.mychat.presentation.viewmodels.сontracts.ChatContract
 import kotlinx.coroutines.flow.collectLatest
 import javax.inject.Inject
 
-class ChatFragment : Fragment() {
+class ChatFragment : Fragment(), ChatMessageListener {
 
     @Inject
     lateinit var vmFactory: ViewModelFactory
@@ -101,7 +106,7 @@ class ChatFragment : Fragment() {
         binding.textName.text = uiState.chatName
         uiState.sender?.let { user ->
             if (!this::adapter.isInitialized) {
-                adapter = ChatAdapter(sender = user)
+                adapter = ChatAdapter(sender = user, messageListener = this)
                 binding.recyclerViewChat.adapter = adapter
             }
         }
@@ -111,5 +116,20 @@ class ChatFragment : Fragment() {
         val message: String = binding.inputMessage.text.toString()
         vm.setEvent(ChatContract.Event.MessageSent(message = message))
         binding.inputMessage.text = null
+    }
+
+    override fun onChatMessageClicked(message: ChatMessage) {
+        activity?.let {
+            val builder = AlertDialog.Builder(it)
+            builder.setItems(R.array.message_action
+                ) { dialog, actionIndex ->
+                    when (actionIndex) {
+                        0 -> vm.setEvent(ChatContract.Event.OnMessageDeleteClicked(message = message))
+                        1 -> vm.setEvent(ChatContract.Event.OnMessageChangeClicked(message = message))
+                    }
+                    dialog.cancel()
+                }
+            builder.create().show()
+        } ?: throw IllegalStateException("Activity cannot be null")
     }
 }
