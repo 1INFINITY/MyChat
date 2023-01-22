@@ -8,6 +8,7 @@ import com.example.mychat.data.storage.StorageConstants.KEY_CHAT_NAME
 import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_CHAT
 import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_CHATS
 import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_USERS
+import com.example.mychat.data.storage.StorageConstants.KEY_DELETED
 import com.example.mychat.data.storage.StorageConstants.KEY_EMAIL
 import com.example.mychat.data.storage.StorageConstants.KEY_FCM_TOKEN
 import com.example.mychat.data.storage.StorageConstants.KEY_IMAGE
@@ -247,6 +248,7 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                             val sender: User = getUserFromSnapShot(senderSnapshot)
 
                             val chatMessage = ChatMessage(
+                                id = doc.document.id,
                                 chat = chat,
                                 sender = sender,
                                 message = message,
@@ -404,6 +406,32 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
             }
         flow.awaitClose {
             registrationChat.remove()
+        }
+    }
+
+    override suspend fun changeMessage(
+        chatMessage: ChatMessage,
+        flow: FlowCollector<ResultData<ChatMessage>>,
+    ) {
+        val messageRef = firestoreDb.collection(KEY_COLLECTION_CHAT).document(chatMessage.id)
+        try {
+            messageRef.update(KEY_MESSAGE, chatMessage.message).await()
+            flow.emit(ResultData.success(chatMessage))
+        } catch (error: FirebaseFirestoreException) {
+            flow.emit(ResultData.failure(error.localizedMessage))
+        }
+    }
+
+    override suspend fun deleteMessage(
+        chatMessage: ChatMessage,
+        flow: FlowCollector<ResultData<ChatMessage>>,
+    ) {
+        val messageRef = firestoreDb.collection(KEY_COLLECTION_CHAT).document(chatMessage.id)
+        try {
+            messageRef.update(KEY_DELETED, true).await()
+            flow.emit(ResultData.success(chatMessage))
+        } catch (error: FirebaseFirestoreException) {
+            flow.emit(ResultData.failure(error.localizedMessage))
         }
     }
 

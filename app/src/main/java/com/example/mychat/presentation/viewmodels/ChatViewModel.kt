@@ -45,8 +45,13 @@ class ChatViewModel(
                     trySendMessage(message = event.message)
             }
             is ChatContract.Event.OnBackButtonClicked -> {
-                // Todo: make it in correct way
                 setEffect { ChatContract.Effect.ToBackFragment }
+            }
+            is ChatContract.Event.OnMessageChangeClicked -> {
+                changeMessage(message = event.message)
+            }
+            is ChatContract.Event.OnMessageDeleteClicked -> {
+               deleteMessage(message = event.message)
             }
         }
     }
@@ -120,8 +125,27 @@ class ChatViewModel(
         }
     }
 
+    private fun deleteMessage(message: ChatMessage) {
+        viewModelScope.launch {
+            repository.deleteMessage(chatMessage = message).collect {
+                when(it) {
+                    is ResultData.Success -> Log.d("Chat", "Message deleted ${it.value.id}")
+                }
+            }
+        }
+    }
+    private fun changeMessage(message: ChatMessage) {
+        viewModelScope.launch {
+            repository.changeMessage(chatMessage = message).collect {
+                when(it) {
+                    is ResultData.Success -> Log.d("Chat", "Message changed ${it.value.id}")
+                }
+            }
+        }
+    }
     private fun trySendMessage(message: String) {
         val message = ChatMessage(
+            id = "",
             chat = chat,
             sender = userSender,
             message = message,

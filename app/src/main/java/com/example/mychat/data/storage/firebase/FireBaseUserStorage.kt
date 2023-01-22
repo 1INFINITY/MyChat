@@ -37,4 +37,8 @@ interface FireBaseUserStorage {
     suspend fun openChat(chatId: String, flow: FlowCollector<ResultData<Chat>>)
 
     suspend fun fetchChats(user: User, flow: ProducerScope<ResultData<List<Chat>>>)
+
+    suspend fun changeMessage(chatMessage: ChatMessage, flow: FlowCollector<ResultData<ChatMessage>>)
+
+    suspend fun deleteMessage(chatMessage: ChatMessage, flow: FlowCollector<ResultData<ChatMessage>>)
 }
