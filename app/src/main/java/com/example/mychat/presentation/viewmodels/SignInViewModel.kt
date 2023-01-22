@@ -1,5 +1,6 @@
 package com.example.mychat.presentation.viewmodels
 
+import android.util.Log
 import android.util.Patterns
 import androidx.lifecycle.viewModelScope
 import com.example.mychat.domain.models.AuthData

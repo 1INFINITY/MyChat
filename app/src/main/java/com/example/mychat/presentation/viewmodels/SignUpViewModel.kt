@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
+import android.util.Log
 import android.util.Patterns
 import androidx.lifecycle.viewModelScope
 import com.example.mychat.domain.models.User
@@ -19,8 +20,11 @@ import java.io.IOException
 class SignUpViewModel(private val repository: UserRepository) :
     BaseViewModel<SignUpContract.Event, SignUpContract.State, SignUpContract.Effect>() {
 
-    private var profileImageBitmap: Bitmap? = null
+    private var profileImage: Bitmap? = null
 
+    init {
+        Log.d("SignUpVM", "init")
+    }
     override fun createInitialState(): SignUpContract.State {
         return SignUpContract.State(
             profileImage = null,
@@ -34,8 +38,11 @@ class SignUpViewModel(private val repository: UserRepository) :
 
     override fun handleEvent(event: SignUpContract.Event) {
         when (event) {
-            is SignUpContract.Event.OnProfileImageClicked -> {
-
+            is SignUpContract.Event.OnImageProfileSelected -> {
+                profileImage = event.image
+                setState {
+                    copy(profileImage = event.uri)
+                }
             }
             is SignUpContract.Event.OnSignUpButtonClicked -> {
                 userRegistration(
@@ -83,10 +90,6 @@ class SignUpViewModel(private val repository: UserRepository) :
         }
     }
 
-    fun setProfileImage(selectedFileUri: Uri, context: Context) {
-        profileImageBitmap = uriToBitmap(selectedFileUri = selectedFileUri, context = context)
-    }
-
     private fun makeUser(
         name: String,
         email: String,
@@ -106,27 +109,14 @@ class SignUpViewModel(private val repository: UserRepository) :
 
         return User(
             id = "",
-            image = profileImageBitmap!!,
+            image = profileImage!!,
             name = name,
             email = email,
             password = password
         )
     }
 
-    // TODO: Try implement func without context
-    private fun uriToBitmap(selectedFileUri: Uri, context: Context): Bitmap? {
-        try {
-            val parcelFileDescriptor =
-                context.contentResolver.openFileDescriptor(selectedFileUri, "r")
-            val fileDescriptor: FileDescriptor = parcelFileDescriptor!!.fileDescriptor
-            val image = BitmapFactory.decodeFileDescriptor(fileDescriptor)
-            parcelFileDescriptor.close()
-            return image
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
-        return null
-    }
+
 
     private fun isValidSignUpDetails(
         name: String,
@@ -136,7 +126,7 @@ class SignUpViewModel(private val repository: UserRepository) :
     ): Boolean {
         var result = true
         var message = ""
-        if (profileImageBitmap == null) {
+        if (profileImage == null) {
             message = "Select a profile image"
             result = false
         } else if (name.trim().isEmpty()) {

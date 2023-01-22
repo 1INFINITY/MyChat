@@ -10,24 +10,16 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
-import com.example.mychat.data.repository.UserRepositoryImpl
-import com.example.mychat.data.storage.firebase.FireBaseStorageImpl
-import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorageImpl
 import com.example.mychat.databinding.FragmentChatBinding
-import com.example.mychat.domain.models.Chat
 import com.example.mychat.presentation.adapters.ChatAdapter
 import com.example.mychat.presentation.app.App
-import com.example.mychat.presentation.viewmodels.ChatModelFactory
 import com.example.mychat.presentation.viewmodels.ChatViewModel
-import com.example.mychat.presentation.viewmodels.UserViewModel
 import com.example.mychat.presentation.viewmodels.ViewModelFactory
 import com.example.mychat.presentation.viewmodels.сontracts.ChatContract
-import com.google.firebase.firestore.ktx.firestore
-import com.google.firebase.ktx.Firebase
 import kotlinx.coroutines.flow.collectLatest
 import javax.inject.Inject
 
-class ChatFragment: Fragment() {
+class ChatFragment : Fragment() {
 
     @Inject
     lateinit var vmFactory: ViewModelFactory
@@ -108,7 +100,7 @@ class ChatFragment: Fragment() {
     private fun loadInitialData(uiState: ChatContract.State) {
         binding.textName.text = uiState.chatName
         uiState.sender?.let { user ->
-            if (!this::adapter.isInitialized){
+            if (!this::adapter.isInitialized) {
                 adapter = ChatAdapter(sender = user)
                 binding.recyclerViewChat.adapter = adapter
             }

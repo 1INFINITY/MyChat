@@ -1,5 +1,9 @@
 package com.example.mychat.presentation.view
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -18,6 +22,8 @@ import com.example.mychat.presentation.viewmodels.ViewModelFactory
 import com.example.mychat.presentation.viewmodels.сontracts.SignUpContract
 import com.google.android.material.imageview.ShapeableImageView
 import kotlinx.coroutines.flow.collectLatest
+import java.io.FileDescriptor
+import java.io.IOException
 import javax.inject.Inject
 
 
@@ -46,16 +52,12 @@ class SignUpFragment : Fragment() {
         val view = binding.root
 
         // TODO: Find out how to do it better
-        val imageField = view.findViewById<ShapeableImageView>(R.id.image_profile)
-        val textAddImage = view.findViewById<TextView>(R.id.text_add_image)
         val imagePicker =
             registerForActivityResult(ActivityResultContracts.GetContent()) { result ->
-                if (result != null)
-                    vm.setProfileImage(result, requireContext())
-                imageField.setImageURI(result)
-                textAddImage.visibility = View.INVISIBLE
+                val imageBitmap = uriToBitmap(selectedFileUri = result)
+                vm.setEvent(SignUpContract.Event.OnImageProfileSelected(uri = result, image = imageBitmap))
             }
-        imageField.setOnClickListener {
+        binding.imageProfile.setOnClickListener {
             imagePicker.launch("image/*")
         }
 
@@ -74,6 +76,7 @@ class SignUpFragment : Fragment() {
             vm.uiState.collectLatest {
                 when (it.fragmentViewState) {
                     is SignUpContract.ViewState.Idle -> {
+                        profileImageUpdate(uri = it.profileImage)
                         loading(false)
                     }
                     is SignUpContract.ViewState.Loading -> {
@@ -101,17 +104,13 @@ class SignUpFragment : Fragment() {
 
     }
 
-    private fun switchPage(fragment: Fragment?) {
-        if (fragment == null) {
-            requireActivity().supportFragmentManager.popBackStack()
-            return
-        }
-        requireActivity().supportFragmentManager.beginTransaction()
-            .replace(this.id, fragment)
-            .addToBackStack(null)
-            .commit()
+    private fun profileImageUpdate(uri: Uri?) {
+        binding.imageProfile.setImageURI(uri)
+        if (uri == null)
+            binding.textAddImage.visibility = View.VISIBLE
+        else
+            binding.textAddImage.visibility = View.INVISIBLE
     }
-
     private fun userRegistration() {
         val nameField = requireView().findViewById<EditText>(R.id.input_name)
         val emailField = requireView().findViewById<EditText>(R.id.input_email)
@@ -140,6 +139,23 @@ class SignUpFragment : Fragment() {
             requireView().findViewById<Button>(R.id.button_sign_up).visibility = View.VISIBLE
             requireView().findViewById<ProgressBar>(R.id.progress_bar).visibility = View.INVISIBLE
         }
+    }
+
+    private fun uriToBitmap(selectedFileUri: Uri?): Bitmap? {
+        if (selectedFileUri == null) {
+            return null
+        }
+        try {
+            val parcelFileDescriptor =
+                requireContext().contentResolver.openFileDescriptor(selectedFileUri, "r")
+            val fileDescriptor: FileDescriptor = parcelFileDescriptor!!.fileDescriptor
+            val image = BitmapFactory.decodeFileDescriptor(fileDescriptor)
+            parcelFileDescriptor.close()
+            return image
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+        return null
     }
 
 }

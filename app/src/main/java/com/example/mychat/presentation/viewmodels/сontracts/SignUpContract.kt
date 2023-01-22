@@ -1,6 +1,7 @@
 package com.example.mychat.presentation.viewmodels.сontracts
 
 import android.graphics.Bitmap
+import android.net.Uri
 import com.example.mychat.presentation.viewmodels.base.UiEffect
 import com.example.mychat.presentation.viewmodels.base.UiEvent
 import com.example.mychat.presentation.viewmodels.base.UiState
@@ -8,7 +9,6 @@ import com.example.mychat.presentation.viewmodels.base.UiState
 class SignUpContract {
     // Events that user performed
     sealed class Event : UiEvent {
-        object OnProfileImageClicked : Event()
         object OnSignInTextClicked : Event()
         data class OnSignUpButtonClicked(
             val name: String,
@@ -16,11 +16,15 @@ class SignUpContract {
             val password: String,
             val confirmPassword: String,
         ) : Event()
+        data class OnImageProfileSelected(
+            val uri: Uri?,
+            val image: Bitmap?
+        ) : Event()
     }
 
     // Ui View States
     data class State(
-        val profileImage: Bitmap?,
+        val profileImage: Uri?,
         val name: String?,
         val email: String?,
         val password: String?,
