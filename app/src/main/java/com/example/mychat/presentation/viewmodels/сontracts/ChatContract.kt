@@ -15,6 +15,8 @@ class ChatContract {
         data class MessageSent(val message: String) : Event()
         data class OnMessageDeleteClicked(val message: ChatMessage) : Event()
         data class OnMessageChangeClicked(val message: ChatMessage) : Event()
+        data class OnConfirmButtonClicked(val changedMessage: String) : Event()
+        object OnCancelChangeClicked : Event()
     }
 
     // Ui View States
@@ -22,6 +24,8 @@ class ChatContract {
         val sender: User? = null,
         val chatName: String? = null,
         val recyclerViewState: RecyclerViewState,
+        val changingMessage: ChatMessage? = null,
+        val changeMessageState: ChangeMessageState
     ) : UiState
 
     // View State that related to Random Number
@@ -30,6 +34,11 @@ class ChatContract {
         object Loading : RecyclerViewState()
         data class Success(val chatMessages: List<ChatMessage>) : RecyclerViewState()
         data class Error(val errorMessage: String) : RecyclerViewState()
+    }
+
+    sealed class ChangeMessageState {
+        object Changing : ChangeMessageState()
+        object Idle : ChangeMessageState()
     }
 
     // Side effects

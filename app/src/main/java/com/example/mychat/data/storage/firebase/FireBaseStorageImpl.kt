@@ -238,22 +238,25 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                         value?.documentChanges?.map { doc ->
                             val message: String = doc.document.getString(KEY_MESSAGE)!!
                             val date: Date = doc.document.getDate(KEY_TIMESTAMP)!!
+                            val deleted: Boolean? = doc.document.getBoolean(KEY_DELETED)
 
-                            // Find User
-                            val senderId: String =
-                                doc.document.getDocumentReference(KEY_SENDER_ID)!!.id
-                            val senderSnapshot =
-                                firestoreDb.collection(KEY_COLLECTION_USERS).document(senderId)
-                                    .get().await()
-                            val sender: User = getUserFromSnapShot(senderSnapshot)
+                            if (deleted == null || deleted == false) {
+                                // Find User
+                                val senderId: String =
+                                    doc.document.getDocumentReference(KEY_SENDER_ID)!!.id
+                                val senderSnapshot =
+                                    firestoreDb.collection(KEY_COLLECTION_USERS).document(senderId)
+                                        .get().await()
+                                val sender: User = getUserFromSnapShot(senderSnapshot)
 
-                            val chatMessage = ChatMessage(
-                                id = doc.document.id,
-                                chat = chat,
-                                sender = sender,
-                                message = message,
-                                date = date)
-                            messageList.add(chatMessage)
+                                val chatMessage = ChatMessage(
+                                    id = doc.document.id,
+                                    chat = chat,
+                                    sender = sender,
+                                    message = message,
+                                    date = date)
+                                messageList.add(chatMessage)
+                            }
                         }
                         flow.trySendBlocking(ResultData.success(messageList.toList()))
                     } else {

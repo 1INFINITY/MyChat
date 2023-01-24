@@ -55,6 +55,8 @@ class ChatFragment : Fragment(), ChatMessageListener {
         super.onStart()
         binding.imageBack.setOnClickListener { vm.setEvent(ChatContract.Event.OnBackButtonClicked) }
         binding.buttonSend.setOnClickListener { sendMessage() }
+        binding.buttonConfirm.setOnClickListener { confirmChangeMessage() }
+        binding.imageCancel.setOnClickListener { vm.setEvent(ChatContract.Event.OnCancelChangeClicked) }
         initObservers()
     }
 
@@ -74,9 +76,17 @@ class ChatFragment : Fragment(), ChatMessageListener {
                         adapter.messages = it.recyclerViewState.chatMessages
                     }
                 }
+
+                when (it.changeMessageState) {
+                    is ChatContract.ChangeMessageState.Idle -> {
+                        messageChange(false)
+                    }
+                    is ChatContract.ChangeMessageState.Changing -> {
+                        messageChange(true)
+                    }
+                }
             }
         }
-
         lifecycleScope.launchWhenStarted {
             vm.effect.collect {
                 when (it) {
@@ -92,6 +102,19 @@ class ChatFragment : Fragment(), ChatMessageListener {
 
     }
 
+    private fun messageChange(isChanging: Boolean) {
+        if (isChanging) {
+            binding.buttonSend.visibility = View.INVISIBLE
+            binding.buttonConfirm.visibility = View.VISIBLE
+            binding.headerChangeMessage.visibility = View.VISIBLE
+            binding.headerCommon.visibility = View.INVISIBLE
+        } else {
+            binding.buttonSend.visibility = View.VISIBLE
+            binding.buttonConfirm.visibility = View.INVISIBLE
+            binding.headerChangeMessage.visibility = View.INVISIBLE
+            binding.headerCommon.visibility = View.VISIBLE
+        }
+    }
     private fun loading(isLoading: Boolean) {
         if (isLoading) {
             binding.recyclerViewChat.visibility = View.INVISIBLE
@@ -111,7 +134,11 @@ class ChatFragment : Fragment(), ChatMessageListener {
             }
         }
     }
-
+    private fun confirmChangeMessage() {
+        val message: String = binding.inputMessage.text.toString()
+        vm.setEvent(ChatContract.Event.OnConfirmButtonClicked(changedMessage = message))
+        binding.inputMessage.text = null
+    }
     private fun sendMessage() {
         val message: String = binding.inputMessage.text.toString()
         vm.setEvent(ChatContract.Event.MessageSent(message = message))

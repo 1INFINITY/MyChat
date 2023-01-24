@@ -34,7 +34,8 @@ class ChatViewModel(
         return ChatContract.State(
             sender = null,
             chatName = "",
-            recyclerViewState = ChatContract.RecyclerViewState.Idle
+            recyclerViewState = ChatContract.RecyclerViewState.Idle,
+            changeMessageState = ChatContract.ChangeMessageState.Idle,
         )
     }
 
@@ -48,10 +49,33 @@ class ChatViewModel(
                 setEffect { ChatContract.Effect.ToBackFragment }
             }
             is ChatContract.Event.OnMessageChangeClicked -> {
-                changeMessage(message = event.message)
+                setState {
+                    copy(
+                        changingMessage = event.message,
+                        changeMessageState = ChatContract.ChangeMessageState.Changing
+                    )
+                }
             }
             is ChatContract.Event.OnMessageDeleteClicked -> {
                deleteMessage(message = event.message)
+            }
+            is ChatContract.Event.OnConfirmButtonClicked -> {
+                val newMessage = uiState.value.changingMessage!!.copy(message = event.changedMessage)
+                changeMessage(message = newMessage)
+                setState {
+                    copy(
+                        changingMessage = null,
+                        changeMessageState = ChatContract.ChangeMessageState.Idle
+                    )
+                }
+            }
+            is ChatContract.Event.OnCancelChangeClicked -> {
+                setState {
+                    copy(
+                        changingMessage = null,
+                        changeMessageState = ChatContract.ChangeMessageState.Idle
+                    )
+                }
             }
         }
     }
