@@ -118,6 +118,34 @@ class ChatViewModel(
             }
             repository.listenMessages(chat = chat).collect { result ->
                 when (result) {
+                    is ResultData.Removed -> {
+                        result.value.forEach { removedMessage ->
+                            val index = messages.indexOfFirst { it.id == removedMessage.id }
+                            if (index != -1){
+                                messages.removeAt(index)
+                            }
+                        }
+                        setState {
+                            copy(
+                                recyclerViewState = ChatContract.RecyclerViewState.Success(
+                                    chatMessages = messages.toList())
+                            )
+                        }
+                    }
+                    is ResultData.Update -> {
+                        result.value.forEach { updatedMessage ->
+                            val index = messages.indexOfFirst { it.id == updatedMessage.id }
+                            if (index != -1){
+                                messages[index] = updatedMessage
+                            }
+                        }
+                        setState {
+                            copy(
+                                recyclerViewState = ChatContract.RecyclerViewState.Success(
+                                    chatMessages = messages.toList())
+                            )
+                        }
+                    }
                     is ResultData.Success -> {
                         result.value.forEach {
                             messages.add(it)

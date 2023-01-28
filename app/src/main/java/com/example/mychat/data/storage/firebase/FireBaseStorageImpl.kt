@@ -228,6 +228,9 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         val query: Query = firestoreDb
             .collection(KEY_COLLECTION_CHAT)
             .whereEqualTo(KEY_CHAT_ID, chatRef)
+        var isAdded: Boolean = false
+        var isUpdate: Boolean = false
+        var isRemoved: Boolean = false
         var chatRegistration: ListenerRegistration? = null
         try {
             chatRegistration = query.addSnapshotListener { value, error ->
@@ -236,12 +239,13 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
 
                         val messageList: MutableList<ChatMessage> = mutableListOf()
                         value?.documentChanges?.map { doc ->
-                            val message: String = doc.document.getString(KEY_MESSAGE)!!
-                            val date: Date = doc.document.getDate(KEY_TIMESTAMP)!!
-                            val deleted: Boolean? = doc.document.getBoolean(KEY_DELETED)
+                            isAdded = doc.type == DocumentChange.Type.ADDED
+                            isUpdate = doc.type == DocumentChange.Type.MODIFIED
+                            isRemoved = doc.document.getBoolean(KEY_DELETED) ?: false
 
-                            if (deleted == null || deleted == false) {
-                                // Find User
+                            if (isAdded && !isRemoved || isUpdate) {
+                                val message: String = doc.document.getString(KEY_MESSAGE)!!
+                                val date: Date = doc.document.getDate(KEY_TIMESTAMP)!!
                                 val senderId: String =
                                     doc.document.getDocumentReference(KEY_SENDER_ID)!!.id
                                 val senderSnapshot =
@@ -258,7 +262,13 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                                 messageList.add(chatMessage)
                             }
                         }
-                        flow.trySendBlocking(ResultData.success(messageList.toList()))
+                        if (isAdded)
+                            flow.trySendBlocking(ResultData.success(messageList.toList()))
+                        else
+                            if (isRemoved)
+                                flow.trySendBlocking(ResultData.removed(messageList.toList()))
+                            else
+                                flow.trySendBlocking(ResultData.update(messageList.toList()))
                     } else {
                         flow.trySendBlocking(ResultData.failure(error.localizedMessage))
                     }

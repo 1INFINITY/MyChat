@@ -3,6 +3,7 @@ package com.example.mychat.presentation.view
 import android.app.AlertDialog
 import android.content.DialogInterface
 import android.os.Bundle
+import android.text.Editable
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -82,6 +83,7 @@ class ChatFragment : Fragment(), ChatMessageListener {
                         messageChange(false)
                     }
                     is ChatContract.ChangeMessageState.Changing -> {
+                        binding.inputMessage.setText(it.changingMessage?.message ?: "")
                         messageChange(true)
                     }
                 }
