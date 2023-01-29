@@ -2,7 +2,7 @@ package com.example.mychat.domain.models
 
 import android.graphics.Bitmap
 
-class User(
+data class User(
     val id: String,
     val image: Bitmap,
     val name: String,

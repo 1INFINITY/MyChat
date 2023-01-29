@@ -16,8 +16,6 @@ interface FireBaseUserStorage {
 
     suspend fun findUser(authData: AuthData): User?
 
-    suspend fun findUserById(userId: String): User?
-
     suspend fun updateToken(userId: String)
 
     suspend fun signOutUser(user: User, flow: FlowCollector<ResultData<Boolean>>): Boolean
