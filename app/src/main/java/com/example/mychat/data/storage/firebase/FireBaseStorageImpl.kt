@@ -285,7 +285,7 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
 
     }
 
-    override suspend fun createNewChat(users: List<User>, flow: FlowCollector<ResultData<Chat>>) {
+    override suspend fun createNewChat(userSender: User, users: List<User>, flow: FlowCollector<ResultData<Chat>>) {
         try {
             val usersIds = users.map {
                 firestoreDb.collection(KEY_COLLECTION_USERS).document(it.id)
@@ -300,7 +300,7 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
             val newChat = Chat(
                 id = newChatId,
                 name = null,
-                users = users,
+                userReceiver = users.find{it.id != userSender.id}!!,
                 lastMessage = lastMessage)
             flow.emit(ResultData.success(newChat))
         } catch (error: FirebaseFirestoreException) {
@@ -308,7 +308,7 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         }
     }
 
-    override suspend fun openChat(chatId: String, flow: FlowCollector<ResultData<Chat>>) {
+    override suspend fun openChat(user: User, chatId: String, flow: FlowCollector<ResultData<Chat>>) {
         try {
             val savedChatSnapshot: DocumentSnapshot = firestoreDb
                 .collection(KEY_COLLECTION_CHATS)
@@ -316,40 +316,29 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                 .get().await()
 
             // TODO: Need Refactoring
-            val usersRefs =
-                (savedChatSnapshot.get(KEY_USERS_ID_ARRAY) as ArrayList<DocumentReference>)
-            val tasks: List<Task<DocumentSnapshot>> = usersRefs.map { it.get() }
-            val allTask: Task<List<DocumentSnapshot>> = Tasks.whenAllSuccess(tasks)
-            val users = mutableListOf<User>()
-            allTask.addOnSuccessListener {
-                for (documentSnapshot in it) {
-                    if (documentSnapshot != null) {
-                        val id = documentSnapshot.id as String
-                        val name = documentSnapshot.get(KEY_NAME) as String
-                        val imageStr = documentSnapshot.get(KEY_IMAGE) as String
-                        val email = documentSnapshot.get(KEY_EMAIL) as String
-                        val password =
-                            documentSnapshot.get(KEY_PASSWORD) as String
-                        val bytes = Base64.decode(imageStr, Base64.DEFAULT)
-                        val image: Bitmap =
-                            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            val userReceiverRef =
+                (savedChatSnapshot.get(KEY_USERS_ID_ARRAY) as ArrayList<DocumentReference>).find { it.id != user.id }
+            val receiverSnapshot = userReceiverRef!!.get().await()
+            val id = receiverSnapshot.id as String
+            val name = receiverSnapshot.get(KEY_NAME) as String
+            val imageStr = receiverSnapshot.get(KEY_IMAGE) as String
+            val email = receiverSnapshot.get(KEY_EMAIL) as String
+            val password = ""
+            val bytes = Base64.decode(imageStr, Base64.DEFAULT)
+            val image: Bitmap =
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
 
-                        val user = User(
-                            id = id,
-                            image = image,
-                            name = name,
-                            email = email,
-                            password = password
-                        )
-                        users.add(user)
-                    }
-                }
-            }.await()
-
+            val userReceiver = User(
+                id = id,
+                image = image,
+                name = name,
+                email = email,
+                password = password
+            )
             val savedChat = Chat(
                 id = savedChatSnapshot.id,
                 name = savedChatSnapshot.getString(KEY_CHAT_NAME),
-                users = users,
+                userReceiver = userReceiver,
                 lastMessage = savedChatSnapshot.getString(KEY_LAST_MESSAGE)!!
             )
             flow.emit(ResultData.success(savedChat))
@@ -375,39 +364,28 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                             val chatName: String? = doc.document.getString(KEY_CHAT_NAME)
                             val lastMessage: String = doc.document.getString(KEY_LAST_MESSAGE)!!
 
-                            val usersRefs =
-                                (doc.document.get(KEY_USERS_ID_ARRAY) as ArrayList<DocumentReference>)
-                            val tasks: List<Task<DocumentSnapshot>> = usersRefs.map { it.get() }
-                            val allTask: Task<List<DocumentSnapshot>> = Tasks.whenAllSuccess(tasks)
-                            val users = mutableListOf<User>()
-                            val job = allTask.addOnSuccessListener {
-                                for (documentSnapshot in it) {
-                                    if (documentSnapshot != null) {
-                                        val id = documentSnapshot.id as String
-                                        val name = documentSnapshot.get(KEY_NAME) as String
-                                        val imageStr = documentSnapshot.get(KEY_IMAGE) as String
-                                        val email = documentSnapshot.get(KEY_EMAIL) as String
-                                        val password =
-                                            documentSnapshot.get(KEY_PASSWORD) as String
-                                        val bytes = Base64.decode(imageStr, Base64.DEFAULT)
-                                        val image: Bitmap =
-                                            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                            val userReceiverRef =
+                                (doc.document.get(KEY_USERS_ID_ARRAY) as ArrayList<DocumentReference>).find { it.id != user.id }
+                            val receiverSnapshot = userReceiverRef!!.get().await()
+                            val id = receiverSnapshot.id as String
+                            val name = receiverSnapshot.get(KEY_NAME) as String
+                            val imageStr = receiverSnapshot.get(KEY_IMAGE) as String
+                            val email = receiverSnapshot.get(KEY_EMAIL) as String
+                            val password = ""
+                            val bytes = Base64.decode(imageStr, Base64.DEFAULT)
+                            val image: Bitmap =
+                                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
 
-                                        val user = User(
-                                            id = id,
-                                            image = image,
-                                            name = name,
-                                            email = email,
-                                            password = password
-                                        )
-                                        users.add(user)
-                                    }
-                                }
-                            }
-                            job.await()
+                            val userReceiver = User(
+                                id = id,
+                                image = image,
+                                name = name,
+                                email = email,
+                                password = password
+                            )
                             val chat = Chat(id = chatId,
                                 name = chatName,
-                                users = users,
+                                userReceiver = userReceiver,
                                 lastMessage = lastMessage)
                             chatList.add(chat)
                         }

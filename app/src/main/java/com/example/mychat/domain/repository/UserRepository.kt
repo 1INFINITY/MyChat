@@ -22,11 +22,11 @@ interface UserRepository {
 
     fun listenMessages(chat: Chat): Flow<ResultData<List<ChatMessage>>>
 
-    fun createNewChat(users: List<User>): Flow<ResultData<Chat>>
+    fun createNewChat(userSender: User, users: List<User>): Flow<ResultData<Chat>>
 
-    fun openChat(chatId: String): Flow<ResultData<Chat>>
+    fun openChat(userSender: User, chatId: String): Flow<ResultData<Chat>>
 
-    fun fetchChats(user: User): Flow<ResultData<List<Chat>>>
+    fun fetchChats(userSender: User): Flow<ResultData<List<Chat>>>
 
     fun deleteMessage(chatMessage: ChatMessage): Flow<ResultData<ChatMessage>>
 

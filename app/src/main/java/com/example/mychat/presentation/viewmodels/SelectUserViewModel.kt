@@ -69,7 +69,7 @@ class SelectUserViewModel(private val repository: UserRepository) :
         val users = listOf(userMain, userReceiver)
 
         viewModelScope.launch {
-            repository.createNewChat(users = users).collect { result ->
+            repository.createNewChat(userSender = userMain, users = users).collect { result ->
                 when (result) {
                     is ResultData.Success -> {
                         setState {

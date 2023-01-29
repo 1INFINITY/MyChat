@@ -69,19 +69,19 @@ class UserRepositoryImpl(
         firebaseStorage.fetchNewMessages(chat = chat, flow = this)
     }
 
-    override fun createNewChat(users: List<User>) = flow<ResultData<Chat>> {
+    override fun createNewChat(userSender: User, users: List<User>) = flow<ResultData<Chat>> {
         emit(ResultData.loading(null))
-        firebaseStorage.createNewChat(users = users, flow = this)
+        firebaseStorage.createNewChat(userSender = userSender, users = users, flow = this)
     }
 
-    override fun openChat(chatId: String) = flow<ResultData<Chat>> {
+    override fun openChat(userSender: User, chatId: String) = flow<ResultData<Chat>> {
         emit(ResultData.loading(null))
-        firebaseStorage.openChat(chatId = chatId, flow = this)
+        firebaseStorage.openChat(user = userSender, chatId = chatId, flow = this)
     }
 
-    override fun fetchChats(user: User) = callbackFlow<ResultData<List<Chat>>> {
+    override fun fetchChats(userSender: User) = callbackFlow<ResultData<List<Chat>>> {
         trySendBlocking(ResultData.loading(null))
-        firebaseStorage.fetchChats(user = user, flow = this)
+        firebaseStorage.fetchChats(user = userSender, flow = this)
     }
 
     override fun deleteMessage(chatMessage: ChatMessage) = flow<ResultData<ChatMessage>> {

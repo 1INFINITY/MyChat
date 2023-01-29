@@ -86,8 +86,9 @@ class ChatViewModel(
                 return
             it.cancel()
         }
+        userSender = repository.getCachedUser()
         chatListenJob = viewModelScope.launch {
-            repository.openChat(chatId = chatId).collect {
+            repository.openChat(userSender = userSender, chatId = chatId).collect {
                 when(it) {
                     is ResultData.Success -> {
                         chat = it.value
@@ -108,8 +109,7 @@ class ChatViewModel(
                     }
                 }
             }
-            userSender = repository.getCachedUser()
-            userReceiver = chat.users.find { it.id != userSender.id } ?: userSender
+            userReceiver = chat.userReceiver
             setState {
                 copy(
                     sender = userSender,

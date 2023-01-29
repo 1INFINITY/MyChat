@@ -33,7 +33,7 @@ class RecentChatsAdapter(private val mainUser: User, private val chatListener: C
         val chat = chats[position]
         val context = holder.itemView.context
 
-        val anotherUser = chat.users.find { it.id != mainUser.id } ?: mainUser
+        val anotherUser = chat.userReceiver
 
         with(holder.binding) {
             imageProfile.setImageBitmap(anotherUser.image)
