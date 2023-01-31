@@ -188,73 +188,50 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
     }
 
     override suspend fun fetchNewMessages(
-        chat: Chat,
-        flow: ProducerScope<ResultData<List<ChatMessage>>>,
-    ) {
+        chat: Chat
+    ) = channelFlow<ResultData<ChatMessageFirestore>> {
         val chatRef: DocumentReference =
             firestoreDb.collection(KEY_COLLECTION_CHATS).document(chat.id)
         val query: Query = firestoreDb
             .collection(KEY_COLLECTION_CHAT)
             .whereEqualTo(KEY_CHAT_ID, chatRef)
-        var isAdded: Boolean = false
-        var isUpdate: Boolean = false
-        var isRemoved: Boolean = false
         var chatRegistration: ListenerRegistration? = null
         try {
             chatRegistration = query.addSnapshotListener { value, error ->
-                flow.launch {
+                GlobalScope.launch {
                     if (error == null) {
-
-                        val messageList: MutableList<ChatMessage> = mutableListOf()
                         value?.documentChanges?.map { doc ->
-                            isAdded = doc.type == DocumentChange.Type.ADDED
-                            isUpdate = doc.type == DocumentChange.Type.MODIFIED
-                            isRemoved = doc.document.getBoolean(KEY_DELETED) ?: false
+                            val isAdded = doc.type == DocumentChange.Type.ADDED
+                            val isUpdate = doc.type == DocumentChange.Type.MODIFIED
+                            val isRemoved = doc.document.getBoolean(KEY_DELETED) ?: false
 
-                            if (isAdded && !isRemoved || isUpdate) {
-                                val chatMessageFirestore =
-                                    doc.document.toObject(ChatMessageFirestore::class.java)
-                                val senderId: String =
-                                    chatMessageFirestore.senderId!!.id
-
-                                val senderSnapshot =
-                                    firestoreDb.collection(KEY_COLLECTION_USERS).document(senderId)
-                                        .get().await()
-                                val userFirestore: UserFirestore =
-                                    senderSnapshot.toObject(UserFirestore::class.java)!!
-                                val sender: User =
-                                    UserMapper(ImageMapper()).transform(userFirestore)
-
-                                val chatMessage = ChatMessage(
-                                    id = doc.document.id,
-                                    chat = chat,
-                                    sender = sender,
-                                    message = chatMessageFirestore.message!!,
-                                    date = chatMessageFirestore.timestamp!!)
-                                messageList.add(chatMessage)
-                            }
+                            val chatMessageFirestore = doc.document.toObject(ChatMessageFirestore::class.java)
+                            if (isAdded && !isRemoved)
+                                send(ResultData.success(chatMessageFirestore))
+                            else if (isUpdate)
+                                if (isRemoved)
+                                    send(ResultData.removed(chatMessageFirestore))
+                                else
+                                    send(ResultData.update(chatMessageFirestore))
                         }
-                        if (isAdded)
-                            flow.trySendBlocking(ResultData.success(messageList.toList()))
-                        else
-                            if (isRemoved)
-                                flow.trySendBlocking(ResultData.removed(messageList.toList()))
-                            else
-                                flow.trySendBlocking(ResultData.update(messageList.toList()))
                     } else {
-                        flow.trySendBlocking(ResultData.failure(error.localizedMessage))
+                        send(ResultData.failure(error.localizedMessage))
                     }
                 }
             }
 
         } catch (error: FirebaseFirestoreException) {
-            flow.trySendBlocking(ResultData.failure(error.localizedMessage))
+            send(ResultData.failure(error.localizedMessage))
         } finally {
-            flow.awaitClose {
+            awaitClose {
                 chatRegistration?.remove()
             }
         }
 
+    }
+
+    override suspend fun findChatByRef(chatRef: DocumentReference): ChatFirestore {
+        return chatRef.get().await().toObject(ChatFirestore::class.java)!!
     }
 
     override suspend fun createNewChat(
@@ -275,6 +252,7 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                 firestoreDb.collection(KEY_COLLECTION_CHATS).add(chatHashMap).await().id
             val newChat = Chat(
                 id = newChatId,
+                userSender = userSender,
                 userReceiver = users.find { it.id != userSender.id }!!,
                 lastMessage = lastMessage)
             flow.emit(ResultData.success(newChat))
@@ -303,6 +281,7 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
 
             val savedChat = Chat(
                 id = savedChatSnapshot.id,
+                userSender = user,
                 userReceiver = userReceiver,
                 lastMessage = savedChatSnapshot.getString(KEY_LAST_MESSAGE)!!
             )
@@ -312,50 +291,8 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         }
     }
 
-    suspend fun fetchChats(
-        user: User,
-        flow: ProducerScope<ResultData<List<Chat>>>,
-    ) {
-        val docRef = firestoreDb.collection(KEY_COLLECTION_USERS).document(user.id)
-
-
-        val registrationChat = firestoreDb.collection(KEY_COLLECTION_CHATS)
-            .whereArrayContains(KEY_USERS_ID_ARRAY, docRef)
-            .addSnapshotListener { value, error ->
-                GlobalScope.launch {
-                    if (error == null && !value!!.isEmpty) {
-                        val chatList: MutableList<Chat> = mutableListOf()
-                        value?.documentChanges?.map { doc ->
-                            val chatId = doc.document.id as String
-                            val lastMessage: String = doc.document.getString(KEY_LAST_MESSAGE)!!
-
-                            val userReceiverRef =
-                                (doc.document.get(KEY_USERS_ID_ARRAY) as ArrayList<DocumentReference>).find { it.id != user.id }
-                            val receiverSnapshot = userReceiverRef!!.get().await()
-                            val userFirestore: UserFirestore =
-                                receiverSnapshot.toObject(UserFirestore::class.java)!!
-                            val userReceiver: User =
-                                UserMapper(ImageMapper()).transform(userFirestore)
-
-                            val chat = Chat(id = chatId,
-                                userReceiver = userReceiver,
-                                lastMessage = lastMessage)
-                            chatList.add(chat)
-                        }
-                        flow.trySendBlocking(ResultData.success(chatList.toList()))
-                    } else {
-                        flow.trySendBlocking(ResultData.failure(error.toString()))
-                    }
-                }
-            }
-        flow.awaitClose {
-            registrationChat.remove()
-        }
-    }
-
-    override suspend fun fetchChats2(
-        user: User,
-        flow: ProducerScope<ResultData<Chat>>,
+    override suspend fun fetchChats(
+        user: User
     ) = channelFlow<ResultData<ChatFirestore>> {
         val docRef = firestoreDb.collection(KEY_COLLECTION_USERS).document(user.id)
 
@@ -383,7 +320,7 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                             }
                         }
                     } catch (error: FirebaseFirestoreException) {
-                        flow.trySendBlocking(ResultData.failure(error.localizedMessage))
+                        send(ResultData.failure(error.localizedMessage))
                     }
                 }
             }

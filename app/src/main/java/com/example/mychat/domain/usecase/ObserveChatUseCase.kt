@@ -9,7 +9,7 @@ import javax.inject.Inject
 
 class ObserveChatUseCase @Inject constructor(private val repository: UserRepository) {
 
-    fun execute(chat: Chat): Flow<ResultData<List<ChatMessage>>> {
-        return repository.listenMessages(chat = chat)
+    fun execute(chat: Chat): Flow<ResultData<ChatMessage>> {
+        return repository.fetchMessages(chat = chat)
     }
 }

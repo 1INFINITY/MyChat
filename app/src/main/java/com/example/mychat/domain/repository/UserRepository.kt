@@ -20,7 +20,7 @@ interface UserRepository {
 
     fun sendMessage(chatMessage: ChatMessage): Flow<ResultData<Boolean>>
 
-    fun listenMessages(chat: Chat): Flow<ResultData<List<ChatMessage>>>
+    fun fetchMessages(chat: Chat): Flow<ResultData<ChatMessage>>
 
     fun createNewChat(userSender: User, users: List<User>): Flow<ResultData<Chat>>
 

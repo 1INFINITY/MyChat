@@ -1,6 +1,9 @@
 package com.example.mychat.data.repository
 
+import com.example.mychat.data.mapping.ImageMapper
+import com.example.mychat.data.mapping.UserMapper
 import com.example.mychat.data.models.ChatFirestore
+import com.example.mychat.data.models.ChatMessageFirestore
 import com.example.mychat.data.storage.firebase.FireBaseUserStorage
 import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorage
 import com.example.mychat.domain.models.AuthData
@@ -63,9 +66,40 @@ class UserRepositoryImpl(
         firebaseStorage.sendMessage(chatMessage = chatMessage, flow = this)
     }
 
-    override fun listenMessages(chat: Chat) = callbackFlow<ResultData<List<ChatMessage>>> {
+    override fun fetchMessages(chat: Chat) = callbackFlow<ResultData<ChatMessage>> {
         trySendBlocking(ResultData.loading(null))
-        firebaseStorage.fetchNewMessages(chat = chat, flow = this)
+        val userSender = chat.userSender
+        firebaseStorage.fetchNewMessages(chat = chat).collect {
+            when (it) {
+                is ResultData.Success -> {
+                    trySendBlocking((ResultData.success(
+                        messageMapping(chatMessageFirestore = it.value))))
+                }
+                is ResultData.Update -> {
+                    trySendBlocking((ResultData.update(
+                        messageMapping(chatMessageFirestore = it.value))))
+                }
+                is ResultData.Removed -> {
+                    trySendBlocking((ResultData.removed(
+                        messageMapping(chatMessageFirestore = it.value))))
+                }
+                else -> {}
+            }
+        }
+    }
+
+    private suspend fun messageMapping(chatMessageFirestore: ChatMessageFirestore): ChatMessage {
+        val chatFirestore: ChatFirestore =
+            firebaseStorage.findChatByRef(chatMessageFirestore.chatId!!)
+        val userSender: User = firebaseStorage.findUserByRef(chatMessageFirestore.senderId!!)
+        val chat: Chat = chatMapping(userSender = userSender, chatFirestore = chatFirestore)
+        return ChatMessage(
+            id = chatMessageFirestore.id!!,
+            chat = chat,
+            sender = userSender,
+            message = chatMessageFirestore.message!!,
+            date = chatMessageFirestore.timestamp!!
+        )
     }
 
     override fun createNewChat(userSender: User, users: List<User>) = flow<ResultData<Chat>> {
@@ -80,7 +114,7 @@ class UserRepositoryImpl(
 
     override fun fetchChats(userSender: User) = callbackFlow<ResultData<Chat>> {
         trySendBlocking(ResultData.loading(null))
-        firebaseStorage.fetchChats2(user = userSender, flow = this).collect {
+        firebaseStorage.fetchChats(user = userSender).collect {
             when (it) {
                 is ResultData.Success -> {
                     trySendBlocking((ResultData.success(
@@ -106,9 +140,11 @@ class UserRepositoryImpl(
     }
 
     private suspend fun chatMapping(userSender: User, chatFirestore: ChatFirestore): Chat {
-        val userReceiverRef = chatFirestore.usersIdArray!!.find { userRef -> userRef.id != userSender.id }!!
+        val userReceiverRef =
+            chatFirestore.usersIdArray!!.find { userRef -> userRef.id != userSender.id }!!
         return Chat(
             id = chatFirestore.id!!,
+            userSender = userSender,
             userReceiver = firebaseStorage.findUserByRef(userReceiverRef),
             lastMessage = chatFirestore.lastMessage!!
         )

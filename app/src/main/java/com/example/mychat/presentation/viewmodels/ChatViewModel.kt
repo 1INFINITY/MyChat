@@ -9,11 +9,7 @@ import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
 import com.example.mychat.presentation.viewmodels.base.BaseViewModel
 import com.example.mychat.presentation.viewmodels.сontracts.ChatContract
-import dagger.assisted.Assisted
-import dagger.assisted.AssistedFactory
-import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.util.*
 
@@ -116,15 +112,11 @@ class ChatViewModel(
                     chatName = userReceiver.name
                 )
             }
-            repository.listenMessages(chat = chat).collect { result ->
+            repository.fetchMessages(chat = chat).collect { result ->
                 when (result) {
                     is ResultData.Removed -> {
-                        result.value.forEach { removedMessage ->
-                            val index = messages.indexOfFirst { it.id == removedMessage.id }
-                            if (index != -1){
-                                messages.removeAt(index)
-                            }
-                        }
+                        val index = messages.indexOfFirst { it.id == result.value.id }
+                        messages.removeAt(index)
                         setState {
                             copy(
                                 recyclerViewState = ChatContract.RecyclerViewState.Success(
@@ -133,12 +125,8 @@ class ChatViewModel(
                         }
                     }
                     is ResultData.Update -> {
-                        result.value.forEach { updatedMessage ->
-                            val index = messages.indexOfFirst { it.id == updatedMessage.id }
-                            if (index != -1){
-                                messages[index] = updatedMessage
-                            }
-                        }
+                        val index = messages.indexOfFirst { it.id == result.value.id }
+                        messages[index] = result.value
                         setState {
                             copy(
                                 recyclerViewState = ChatContract.RecyclerViewState.Success(
@@ -147,9 +135,7 @@ class ChatViewModel(
                         }
                     }
                     is ResultData.Success -> {
-                        result.value.forEach {
-                            messages.add(it)
-                        }
+                        messages.add(result.value)
                         messages.sortBy { it.date }
                         setState {
                             copy(

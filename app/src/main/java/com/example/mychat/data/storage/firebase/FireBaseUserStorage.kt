@@ -1,6 +1,7 @@
 package com.example.mychat.data.storage.firebase
 
 import com.example.mychat.data.models.ChatFirestore
+import com.example.mychat.data.models.ChatMessageFirestore
 import com.example.mychat.domain.models.AuthData
 import com.example.mychat.domain.models.Chat
 import com.example.mychat.domain.models.ChatMessage
@@ -32,13 +33,15 @@ interface FireBaseUserStorage {
 
     suspend fun fetchNewMessages(
         chat: Chat,
-        flow: ProducerScope<ResultData<List<ChatMessage>>>
-    )
+    ): Flow<ResultData<ChatMessageFirestore>>
+
+    suspend fun findChatByRef(chatRef: DocumentReference): ChatFirestore
+
     suspend fun createNewChat(userSender: User, users: List<User>, flow: FlowCollector<ResultData<Chat>>)
 
     suspend fun openChat(user: User, chatId: String, flow: FlowCollector<ResultData<Chat>>)
 
-    suspend fun fetchChats2(user: User, flow: ProducerScope<ResultData<Chat>>): Flow<ResultData<ChatFirestore>>
+    suspend fun fetchChats(user: User): Flow<ResultData<ChatFirestore>>
 
     suspend fun changeMessage(chatMessage: ChatMessage, flow: FlowCollector<ResultData<ChatMessage>>)
 
