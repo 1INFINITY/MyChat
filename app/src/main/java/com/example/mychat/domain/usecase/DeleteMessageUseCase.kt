@@ -7,8 +7,8 @@ import com.example.mychat.domain.repository.UserRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
-class ObserveChatUseCase @Inject constructor(private val repository: UserRepository) {
-    fun execute(chat: Chat): Flow<ResultData<ChatMessage>> {
-        return repository.fetchMessages(chat = chat)
+class DeleteMessageUseCase @Inject constructor(private val repository: UserRepository) {
+    fun execute(chatMessage: ChatMessage): Flow<ResultData<ChatMessage>> {
+        return repository.deleteMessage(chatMessage = chatMessage)
     }
 }

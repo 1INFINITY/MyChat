@@ -6,12 +6,13 @@ import androidx.lifecycle.viewModelScope
 import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
+import com.example.mychat.domain.usecase.UserRegistrationUseCase
 import com.example.mychat.presentation.viewmodels.base.BaseViewModel
 import com.example.mychat.presentation.viewmodels.сontracts.SignUpContract
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-class SignUpViewModel(private val repository: UserRepository) :
+class SignUpViewModel(private val userRegistrationUseCase: UserRegistrationUseCase) :
     BaseViewModel<SignUpContract.Event, SignUpContract.State, SignUpContract.Effect>() {
 
     private var profileImage: Bitmap? = null
@@ -58,7 +59,7 @@ class SignUpViewModel(private val repository: UserRepository) :
         val user: User = makeUser(name, email, password, confirmPassword) ?: return
 
         viewModelScope.launch {
-            repository.userRegistration(user = user).collectLatest { result ->
+            userRegistrationUseCase.execute(user = user).collectLatest { result ->
                 when (result) {
                     is ResultData.Success -> {
                         setState {

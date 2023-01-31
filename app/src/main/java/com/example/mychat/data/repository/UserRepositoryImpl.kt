@@ -68,7 +68,6 @@ class UserRepositoryImpl(
 
     override fun fetchMessages(chat: Chat) = callbackFlow<ResultData<ChatMessage>> {
         trySendBlocking(ResultData.loading(null))
-        val userSender = chat.userSender
         firebaseStorage.fetchNewMessages(chat = chat).collect {
             when (it) {
                 is ResultData.Success -> {

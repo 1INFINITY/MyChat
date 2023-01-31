@@ -5,13 +5,20 @@ import com.example.mychat.domain.models.Chat
 import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
+import com.example.mychat.domain.usecase.GetCachedUserUseCase
+import com.example.mychat.domain.usecase.ObserveChatsUseCase
+import com.example.mychat.domain.usecase.SignOutUseCase
 import com.example.mychat.presentation.viewmodels.base.BaseViewModel
 import com.example.mychat.presentation.viewmodels.сontracts.UserContract
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-class UserViewModel(private val repository: UserRepository) :
+class UserViewModel(
+    private val getCachedUserUseCase: GetCachedUserUseCase,
+    private val observeChatsUseCase: ObserveChatsUseCase,
+    private val signOutUseCase: SignOutUseCase
+) :
     BaseViewModel<UserContract.Event, UserContract.State, UserContract.Effect>() {
 
     private var chats: MutableList<Chat> = mutableListOf()
@@ -49,7 +56,7 @@ class UserViewModel(private val repository: UserRepository) :
 
     init {
         viewModelScope.launch {
-            user = getMainUser()
+            user = getCachedUserUseCase.execute()
             setState {
                 copy(
                     userName = user.name,
@@ -57,7 +64,7 @@ class UserViewModel(private val repository: UserRepository) :
                     recyclerViewState = UserContract.RecyclerViewState.Loading
                 )
             }
-            repository.fetchChats(getMainUser()).collect { result ->
+            observeChatsUseCase.execute(userSender = user).collect { result ->
                 when (result) {
                     is ResultData.Removed -> {
                         val index = chats.indexOfFirst { it.id == result.value.id }
@@ -110,7 +117,7 @@ class UserViewModel(private val repository: UserRepository) :
 
     private fun signOut() {
         viewModelScope.launch {
-            repository.signOut().collect { result ->
+            signOutUseCase.execute().collect { result ->
                 when (result) {
                     is ResultData.Success -> {
                         setEffect { UserContract.Effect.ToBackFragment }
@@ -132,9 +139,5 @@ class UserViewModel(private val repository: UserRepository) :
                 }
             }
         }
-    }
-
-    fun getMainUser(): User {
-        return repository.getCachedUser()
     }
 }

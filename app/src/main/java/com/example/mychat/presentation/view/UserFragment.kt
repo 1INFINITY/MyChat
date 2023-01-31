@@ -12,6 +12,7 @@ import androidx.navigation.fragment.findNavController
 import com.example.mychat.R
 import com.example.mychat.databinding.FragmentUserBinding
 import com.example.mychat.domain.models.Chat
+import com.example.mychat.domain.usecase.GetCachedUserUseCase
 import com.example.mychat.presentation.adapters.RecentChatsAdapter
 import com.example.mychat.presentation.app.App
 import com.example.mychat.presentation.listeners.ChatListener
@@ -25,6 +26,9 @@ class UserFragment : Fragment(), ChatListener {
     @Inject
     lateinit var vmFactory: ViewModelFactory
 
+    @Inject
+    lateinit var getCachedUserUseCase: GetCachedUserUseCase
+
     private lateinit var vm: UserViewModel
     private lateinit var binding: FragmentUserBinding
     private lateinit var adapter: RecentChatsAdapter
@@ -34,7 +38,7 @@ class UserFragment : Fragment(), ChatListener {
         super.onCreate(savedInstanceState)
         (requireActivity().applicationContext as App).appComponent.inject(this)
         vm = ViewModelProvider(this, vmFactory)[UserViewModel::class.java]
-        adapter = RecentChatsAdapter(mainUser = vm.getMainUser(), this)
+        adapter = RecentChatsAdapter(mainUser = getCachedUserUseCase.execute(), this)
     }
 
     override fun onCreateView(

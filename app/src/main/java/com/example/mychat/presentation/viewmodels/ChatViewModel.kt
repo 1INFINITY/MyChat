@@ -7,6 +7,7 @@ import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
+import com.example.mychat.domain.usecase.*
 import com.example.mychat.presentation.viewmodels.base.BaseViewModel
 import com.example.mychat.presentation.viewmodels.сontracts.ChatContract
 import kotlinx.coroutines.Job
@@ -14,7 +15,12 @@ import kotlinx.coroutines.launch
 import java.util.*
 
 class ChatViewModel(
-    private val repository: UserRepository,
+    private val getCachedUserUseCase: GetCachedUserUseCase,
+    private val loadChatUseCase: LoadChatUseCase,
+    private val observeChatUseCase: ObserveChatUseCase,
+    private val sendMessageUseCase: SendMessageUseCase,
+    private val changeMessageUseCase: ChangeMessageUseCase,
+    private val deleteMessageUseCase: DeleteMessageUseCase,
 ) :
     BaseViewModel<ChatContract.Event, ChatContract.State, ChatContract.Effect>() {
 
@@ -82,9 +88,9 @@ class ChatViewModel(
                 return
             it.cancel()
         }
-        userSender = repository.getCachedUser()
+        userSender = getCachedUserUseCase.execute()
         chatListenJob = viewModelScope.launch {
-            repository.openChat(userSender = userSender, chatId = chatId).collect {
+            loadChatUseCase.execute(userSender = userSender, chatId = chatId).collect {
                 when(it) {
                     is ResultData.Success -> {
                         chat = it.value
@@ -112,7 +118,7 @@ class ChatViewModel(
                     chatName = userReceiver.name
                 )
             }
-            repository.fetchMessages(chat = chat).collect { result ->
+            observeChatUseCase.execute(chat = chat).collect { result ->
                 when (result) {
                     is ResultData.Removed -> {
                         val index = messages.indexOfFirst { it.id == result.value.id }
@@ -165,7 +171,7 @@ class ChatViewModel(
 
     private fun deleteMessage(message: ChatMessage) {
         viewModelScope.launch {
-            repository.deleteMessage(chatMessage = message).collect {
+            deleteMessageUseCase.execute(chatMessage = message).collect {
                 when(it) {
                     is ResultData.Success -> Log.d("Chat", "Message deleted ${it.value.id}")
                 }
@@ -174,7 +180,7 @@ class ChatViewModel(
     }
     private fun changeMessage(message: ChatMessage) {
         viewModelScope.launch {
-            repository.changeMessage(chatMessage = message).collect {
+            changeMessageUseCase.execute(chatMessage = message).collect {
                 when(it) {
                     is ResultData.Success -> Log.d("Chat", "Message changed ${it.value.id}")
                 }
@@ -189,7 +195,7 @@ class ChatViewModel(
             message = message,
             date = Date())
         viewModelScope.launch {
-            repository.sendMessage(message).collect {
+            sendMessageUseCase.execute(chatMessage = message).collect {
                 when(it) {
                     is ResultData.Success -> Log.d("Chat", it.value.toString())
                 }

@@ -6,11 +6,12 @@ import androidx.lifecycle.viewModelScope
 import com.example.mychat.domain.models.AuthData
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
+import com.example.mychat.domain.usecase.UserAuthorizationUseCase
 import com.example.mychat.presentation.viewmodels.base.BaseViewModel
 import com.example.mychat.presentation.viewmodels.сontracts.SignInContract
 import kotlinx.coroutines.launch
 
-class SignInViewModel(private val repository: UserRepository) :
+class SignInViewModel(private val userAuthorizationUseCase: UserAuthorizationUseCase) :
     BaseViewModel<SignInContract.Event, SignInContract.State, SignInContract.Effect>() {
 
     override fun createInitialState(): SignInContract.State {
@@ -44,7 +45,7 @@ class SignInViewModel(private val repository: UserRepository) :
             email = email,
             password = password)
         viewModelScope.launch {
-            repository.userAuthorization(authData).collect { result ->
+            userAuthorizationUseCase.execute(authData).collect { result ->
                 when (result) {
                     is ResultData.Success -> {
                         setState {
