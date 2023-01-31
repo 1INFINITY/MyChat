@@ -2,7 +2,7 @@ package com.example.mychat.data.models
 
 import com.google.firebase.firestore.DocumentId
 
-class UserFirestore (
+data class UserFirestore (
     @DocumentId
     val id: String? = null,
     val email: String? = null,

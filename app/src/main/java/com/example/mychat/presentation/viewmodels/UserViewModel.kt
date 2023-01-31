@@ -7,6 +7,8 @@ import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
 import com.example.mychat.presentation.viewmodels.base.BaseViewModel
 import com.example.mychat.presentation.viewmodels.сontracts.UserContract
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class UserViewModel(private val repository: UserRepository) :
@@ -57,11 +59,33 @@ class UserViewModel(private val repository: UserRepository) :
             }
             repository.fetchChats(getMainUser()).collect { result ->
                 when (result) {
+                    is ResultData.Removed -> {
+                        val index = chats.indexOfFirst { it.id == result.value.id }
+                        if (index != -1) {
+                            chats.removeAt(index)
+                            setState {
+                                copy(
+                                    recyclerViewState = UserContract.RecyclerViewState.Success(chats.toList())
+                                )
+                            }
+                        }
+                    }
+                    is ResultData.Update -> {
+                        val index = chats.indexOfFirst { it.id == result.value.id }
+                        if (index != -1) {
+                            chats[index] = result.value
+                            setState {
+                                copy(
+                                    recyclerViewState = UserContract.RecyclerViewState.Success(chats.toList())
+                                )
+                            }
+                        }
+                    }
                     is ResultData.Success -> {
-                        chatsUpdate(updates = result.value)
+                        chats.add(result.value)
                         setState {
                             copy(
-                                recyclerViewState = UserContract.RecyclerViewState.Success(chats)
+                                recyclerViewState = UserContract.RecyclerViewState.Success(chats.toList())
                             )
                         }
                     }
@@ -84,7 +108,7 @@ class UserViewModel(private val repository: UserRepository) :
         }
     }
 
-    fun signOut() {
+    private fun signOut() {
         viewModelScope.launch {
             repository.signOut().collect { result ->
                 when (result) {
@@ -113,16 +137,4 @@ class UserViewModel(private val repository: UserRepository) :
     fun getMainUser(): User {
         return repository.getCachedUser()
     }
-
-
-    private fun chatsUpdate(updates: List<Chat>) {
-        updates.map { chat ->
-            val index = chats.indexOfFirst { it.id == chat.id }
-            if (index == -1)
-                chats.add(chat)
-            else
-                chats[index] = chat
-        }
-    }
-
 }

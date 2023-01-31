@@ -1,12 +1,10 @@
 package com.example.mychat.data.storage.firebase
 
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.util.Base64
 import com.example.mychat.data.mapping.EncodedImageMapper
 import com.example.mychat.data.mapping.ImageMapper
 import com.example.mychat.data.mapping.UserMapper
 import com.example.mychat.data.mapping.UserRegisteredMapper
+import com.example.mychat.data.models.ChatFirestore
 import com.example.mychat.data.models.ChatMessageFirestore
 import com.example.mychat.data.models.UserFirestore
 import com.example.mychat.data.storage.StorageConstants.KEY_CHAT_ID
@@ -17,13 +15,9 @@ import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_USERS
 import com.example.mychat.data.storage.StorageConstants.KEY_DELETED
 import com.example.mychat.data.storage.StorageConstants.KEY_EMAIL
 import com.example.mychat.data.storage.StorageConstants.KEY_FCM_TOKEN
-import com.example.mychat.data.storage.StorageConstants.KEY_IMAGE
 import com.example.mychat.data.storage.StorageConstants.KEY_LAST_MESSAGE
 import com.example.mychat.data.storage.StorageConstants.KEY_MESSAGE
-import com.example.mychat.data.storage.StorageConstants.KEY_NAME
 import com.example.mychat.data.storage.StorageConstants.KEY_PASSWORD
-import com.example.mychat.data.storage.StorageConstants.KEY_SENDER_ID
-import com.example.mychat.data.storage.StorageConstants.KEY_TIMESTAMP
 import com.example.mychat.data.storage.StorageConstants.KEY_USERS_ID_ARRAY
 import com.example.mychat.domain.models.AuthData
 import com.example.mychat.domain.models.Chat
@@ -37,9 +31,10 @@ import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import java.io.ByteArrayOutputStream
 import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
@@ -87,6 +82,11 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         }
     }
 
+    override suspend fun findUserByRef(userRef: DocumentReference): User {
+        val userFirestore = userRef.get().await().toObject(UserFirestore::class.java)!!
+        return UserMapper(ImageMapper()).transform(userFirestore)
+    }
+
     override suspend fun findUser(authData: AuthData): User? {
         return suspendCoroutine {
             firestoreDb.collection(KEY_COLLECTION_USERS)
@@ -95,7 +95,8 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                 .get()
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful && task.result != null && task.result.documents.size > 0) {
-                        val userFirestore = task.result.documents[0].toObject(UserFirestore::class.java)!!
+                        val userFirestore =
+                            task.result.documents[0].toObject(UserFirestore::class.java)!!
                         val user = UserMapper(ImageMapper()).transform(userFirestore)
                         it.resume(user)
                     } else {
@@ -274,7 +275,6 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                 firestoreDb.collection(KEY_COLLECTION_CHATS).add(chatHashMap).await().id
             val newChat = Chat(
                 id = newChatId,
-                name = null,
                 userReceiver = users.find { it.id != userSender.id }!!,
                 lastMessage = lastMessage)
             flow.emit(ResultData.success(newChat))
@@ -303,7 +303,6 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
 
             val savedChat = Chat(
                 id = savedChatSnapshot.id,
-                name = savedChatSnapshot.getString(KEY_CHAT_NAME),
                 userReceiver = userReceiver,
                 lastMessage = savedChatSnapshot.getString(KEY_LAST_MESSAGE)!!
             )
@@ -313,7 +312,7 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         }
     }
 
-    override suspend fun fetchChats(
+    suspend fun fetchChats(
         user: User,
         flow: ProducerScope<ResultData<List<Chat>>>,
     ) {
@@ -328,7 +327,6 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                         val chatList: MutableList<Chat> = mutableListOf()
                         value?.documentChanges?.map { doc ->
                             val chatId = doc.document.id as String
-                            val chatName: String? = doc.document.getString(KEY_CHAT_NAME)
                             val lastMessage: String = doc.document.getString(KEY_LAST_MESSAGE)!!
 
                             val userReceiverRef =
@@ -340,7 +338,6 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                                 UserMapper(ImageMapper()).transform(userFirestore)
 
                             val chat = Chat(id = chatId,
-                                name = chatName,
                                 userReceiver = userReceiver,
                                 lastMessage = lastMessage)
                             chatList.add(chat)
@@ -352,6 +349,45 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                 }
             }
         flow.awaitClose {
+            registrationChat.remove()
+        }
+    }
+
+    override suspend fun fetchChats2(
+        user: User,
+        flow: ProducerScope<ResultData<Chat>>,
+    ) = channelFlow<ResultData<ChatFirestore>> {
+        val docRef = firestoreDb.collection(KEY_COLLECTION_USERS).document(user.id)
+
+        val registrationChat = firestoreDb.collection(KEY_COLLECTION_CHATS)
+            .whereArrayContains(KEY_USERS_ID_ARRAY, docRef)
+            .addSnapshotListener { value, error ->
+                GlobalScope.launch {
+                    try {
+                        if (error == null && !value!!.isEmpty) {
+                            value.documentChanges.map { doc ->
+                                val chatFirestore = doc.document.toObject(ChatFirestore::class.java)
+                                when (doc.type) {
+                                    DocumentChange.Type.ADDED -> {
+                                        send(ResultData.success(chatFirestore))
+                                    }
+                                    DocumentChange.Type.MODIFIED -> {
+                                        val deleted: Boolean? = doc.document.getBoolean(KEY_DELETED)
+                                        if (deleted != null && deleted == true)
+                                            send(ResultData.removed(chatFirestore))
+                                        else
+                                            send(ResultData.update(chatFirestore))
+                                    }
+                                    else -> {}
+                                }
+                            }
+                        }
+                    } catch (error: FirebaseFirestoreException) {
+                        flow.trySendBlocking(ResultData.failure(error.localizedMessage))
+                    }
+                }
+            }
+        awaitClose {
             registrationChat.remove()
         }
     }

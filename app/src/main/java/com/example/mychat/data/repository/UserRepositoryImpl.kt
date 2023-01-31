@@ -1,5 +1,6 @@
 package com.example.mychat.data.repository
 
+import com.example.mychat.data.models.ChatFirestore
 import com.example.mychat.data.storage.firebase.FireBaseUserStorage
 import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorage
 import com.example.mychat.domain.models.AuthData
@@ -8,11 +9,9 @@ import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.trySendBlocking
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flow
 
 class UserRepositoryImpl(
@@ -79,9 +78,40 @@ class UserRepositoryImpl(
         firebaseStorage.openChat(user = userSender, chatId = chatId, flow = this)
     }
 
-    override fun fetchChats(userSender: User) = callbackFlow<ResultData<List<Chat>>> {
+    override fun fetchChats(userSender: User) = callbackFlow<ResultData<Chat>> {
         trySendBlocking(ResultData.loading(null))
-        firebaseStorage.fetchChats(user = userSender, flow = this)
+        firebaseStorage.fetchChats2(user = userSender, flow = this).collect {
+            when (it) {
+                is ResultData.Success -> {
+                    trySendBlocking((ResultData.success(
+                        chatMapping(userSender = userSender,
+                            chatFirestore = it.value)
+                    )))
+                }
+                is ResultData.Update -> {
+                    trySendBlocking((ResultData.update(
+                        chatMapping(userSender = userSender,
+                            chatFirestore = it.value)
+                    )))
+                }
+                is ResultData.Removed -> {
+                    trySendBlocking((ResultData.removed(
+                        chatMapping(userSender = userSender,
+                            chatFirestore = it.value)
+                    )))
+                }
+                else -> {}
+            }
+        }
+    }
+
+    private suspend fun chatMapping(userSender: User, chatFirestore: ChatFirestore): Chat {
+        val userReceiverRef = chatFirestore.usersIdArray!!.find { userRef -> userRef.id != userSender.id }!!
+        return Chat(
+            id = chatFirestore.id!!,
+            userReceiver = firebaseStorage.findUserByRef(userReceiverRef),
+            lastMessage = chatFirestore.lastMessage!!
+        )
     }
 
     override fun deleteMessage(chatMessage: ChatMessage) = flow<ResultData<ChatMessage>> {

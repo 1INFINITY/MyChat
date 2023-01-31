@@ -26,7 +26,7 @@ interface UserRepository {
 
     fun openChat(userSender: User, chatId: String): Flow<ResultData<Chat>>
 
-    fun fetchChats(userSender: User): Flow<ResultData<List<Chat>>>
+    fun fetchChats(userSender: User): Flow<ResultData<Chat>>
 
     fun deleteMessage(chatMessage: ChatMessage): Flow<ResultData<ChatMessage>>
 

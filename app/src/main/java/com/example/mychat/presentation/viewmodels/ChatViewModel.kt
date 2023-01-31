@@ -113,7 +113,7 @@ class ChatViewModel(
             setState {
                 copy(
                     sender = userSender,
-                    chatName = chat.name ?: userReceiver.name
+                    chatName = userReceiver.name
                 )
             }
             repository.listenMessages(chat = chat).collect { result ->
