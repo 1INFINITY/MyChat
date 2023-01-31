@@ -7,6 +7,7 @@ import com.example.mychat.data.mapping.EncodedImageMapper
 import com.example.mychat.data.mapping.ImageMapper
 import com.example.mychat.data.mapping.UserMapper
 import com.example.mychat.data.mapping.UserRegisteredMapper
+import com.example.mychat.data.models.ChatMessageFirestore
 import com.example.mychat.data.models.UserFirestore
 import com.example.mychat.data.storage.StorageConstants.KEY_CHAT_ID
 import com.example.mychat.data.storage.StorageConstants.KEY_CHAT_NAME
@@ -84,7 +85,6 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                     }
                 }
         }
-
     }
 
     override suspend fun findUser(authData: AuthData): User? {
@@ -95,21 +95,8 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                 .get()
                 .addOnCompleteListener { task ->
                     if (task.isSuccessful && task.result != null && task.result.documents.size > 0) {
-                        val id = task.result.documents[0].id as String
-                        val name = task.result.documents[0].get(KEY_NAME) as String
-                        val imageStr = task.result.documents[0].get(KEY_IMAGE) as String
-                        val email = task.result.documents[0].get(KEY_EMAIL) as String
-                        val password = task.result.documents[0].get(KEY_PASSWORD) as String
-                        val bytes = Base64.decode(imageStr, Base64.DEFAULT)
-                        val image: Bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-
-                        val user = User(
-                            id = id,
-                            image = image,
-                            name = name,
-                            email = email,
-                            password = password
-                        )
+                        val userFirestore = task.result.documents[0].toObject(UserFirestore::class.java)!!
+                        val user = UserMapper(ImageMapper()).transform(userFirestore)
                         it.resume(user)
                     } else {
                         it.resume(null)
@@ -179,15 +166,17 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         val chatRef = firestoreDb.collection(KEY_COLLECTION_CHATS).document(chatMessage.chat.id)
         val senderRef =
             firestoreDb.collection(KEY_COLLECTION_USERS).document(chatMessage.sender.id)
-        val messageHashMap = hashMapOf(
-            KEY_CHAT_ID to chatRef,
-            KEY_SENDER_ID to senderRef,
-            KEY_MESSAGE to chatMessage.message,
-            KEY_TIMESTAMP to chatMessage.date,
+        val messageFirestore = ChatMessageFirestore(
+            null,
+            chatRef,
+            senderRef,
+            chatMessage.message,
+            chatMessage.date,
+            false
         )
 
         try {
-            documentReference.add(messageHashMap).await()
+            documentReference.add(messageFirestore).await()
             chatRef.update(KEY_LAST_MESSAGE, chatMessage.message)
             flow.emit(ResultData.success(true))
             return true
@@ -222,10 +211,11 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                             isRemoved = doc.document.getBoolean(KEY_DELETED) ?: false
 
                             if (isAdded && !isRemoved || isUpdate) {
-                                val message: String = doc.document.getString(KEY_MESSAGE)!!
-                                val date: Date = doc.document.getDate(KEY_TIMESTAMP)!!
+                                val chatMessageFirestore =
+                                    doc.document.toObject(ChatMessageFirestore::class.java)
                                 val senderId: String =
-                                    doc.document.getDocumentReference(KEY_SENDER_ID)!!.id
+                                    chatMessageFirestore.senderId!!.id
+
                                 val senderSnapshot =
                                     firestoreDb.collection(KEY_COLLECTION_USERS).document(senderId)
                                         .get().await()
@@ -238,8 +228,8 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                                     id = doc.document.id,
                                     chat = chat,
                                     sender = sender,
-                                    message = message,
-                                    date = date)
+                                    message = chatMessageFirestore.message!!,
+                                    date = chatMessageFirestore.timestamp!!)
                                 messageList.add(chatMessage)
                             }
                         }

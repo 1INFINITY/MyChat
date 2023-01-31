@@ -14,7 +14,6 @@ object StorageConstants {
     val KEY_COLLECTION_CHAT = "messages"
     val KEY_CHAT_ID = "chatId"
     val KEY_SENDER_ID = "senderId"
-    val KEY_RECEIVER_ID = "receiverId"
     val KEY_MESSAGE = "message"
     val KEY_TIMESTAMP = "timestamp"
     val KEY_DELETED = "deleted"
