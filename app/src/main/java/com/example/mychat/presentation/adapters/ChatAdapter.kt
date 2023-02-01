@@ -3,6 +3,8 @@ package com.example.mychat.presentation.adapters
 import android.graphics.Bitmap
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.AsyncListDiffer
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import com.example.mychat.databinding.ItemContainerReceivedBinding
 import com.example.mychat.databinding.ItemContainerSentMessageBinding
@@ -16,12 +18,15 @@ class ChatAdapter(
     private val sender: User, private val messageListener: ChatMessageListener,
 ) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    var messages: List<ChatMessage> = emptyList()
-        set(newValue) {
-            field = newValue
-            notifyDataSetChanged()
-        }
+    private val differ: AsyncListDiffer<ChatMessage> = AsyncListDiffer(this, DiffCallback())
 
+    fun submitList(list: List<ChatMessage>) {
+        differ.submitList(list)
+    }
+
+    fun currentList(): List<ChatMessage> {
+        return differ.currentList
+    }
 
     class SentMessageViewHolder(val binding: ItemContainerSentMessageBinding) :
         RecyclerView.ViewHolder(binding.root) {
@@ -60,11 +65,11 @@ class ChatAdapter(
         }
     }
 
-    override fun getItemCount(): Int = messages.size
+    override fun getItemCount(): Int = currentList().size
 
 
     override fun getItemViewType(position: Int): Int {
-        return if (messages[position].sender.id == sender.id)
+        return if (differ.currentList[position].sender.id == sender.id)
             ViewType.SENT.type
         else
             ViewType.RECEIVED.type
@@ -72,13 +77,21 @@ class ChatAdapter(
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         if (getItemViewType(position) == ViewType.SENT.type) {
-            (holder as SentMessageViewHolder).setData(messages[position])
+            (holder as SentMessageViewHolder).setData(differ.currentList[position])
             (holder as SentMessageViewHolder).binding.root.setOnClickListener {
-                messageListener.onChatMessageClicked(message = messages[position])
+                messageListener.onChatMessageClicked(message = differ.currentList[position])
             }
         } else {
-            (holder as ReceivedMessageViewHolder).setData(messages[position])
+            (holder as ReceivedMessageViewHolder).setData(differ.currentList[position])
         }
+    }
+
+    private class DiffCallback : DiffUtil.ItemCallback<ChatMessage>() {
+        override fun areItemsTheSame(oldItem: ChatMessage, newItem: ChatMessage) =
+            oldItem.id == newItem.id
+
+        override fun areContentsTheSame(oldItem: ChatMessage, newItem: ChatMessage) =
+            oldItem.message == newItem.message
     }
 
     companion object {

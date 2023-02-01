@@ -74,7 +74,7 @@ class ChatFragment : Fragment(), ChatMessageListener {
                     }
                     is ChatContract.RecyclerViewState.Success -> {
                         loading(false)
-                        adapter.messages = it.recyclerViewState.chatMessages
+                        adapter.submitList(it.recyclerViewState.chatMessages)
                     }
                 }
 

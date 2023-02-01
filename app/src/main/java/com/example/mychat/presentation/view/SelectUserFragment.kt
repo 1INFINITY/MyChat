@@ -84,7 +84,7 @@ class SelectUserFragment : Fragment(), UserListener {
                     }
                     is SelectUserContract.RecyclerViewState.Success -> {
                         loading(false)
-                        adapter.users = it.recyclerViewState.users
+                        adapter.submitList(it.recyclerViewState.users)
                     }
                 }
             }

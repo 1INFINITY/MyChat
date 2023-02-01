@@ -85,7 +85,7 @@ class UserFragment : Fragment(), ChatListener {
                     }
                     is RecyclerViewState.Success -> {
                         loading(false)
-                        adapter.chats = it.recyclerViewState.chatsList
+                        adapter.submitList(it.recyclerViewState.chatsList)
                     }
                 }
             }
