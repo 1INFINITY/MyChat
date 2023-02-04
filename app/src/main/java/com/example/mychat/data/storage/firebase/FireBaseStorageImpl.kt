@@ -8,16 +8,18 @@ import com.example.mychat.data.models.ChatFirestore
 import com.example.mychat.data.models.ChatMessageFirestore
 import com.example.mychat.data.models.UserFirestore
 import com.example.mychat.data.storage.StorageConstants.KEY_CHAT_ID
-import com.example.mychat.data.storage.StorageConstants.KEY_CHAT_NAME
-import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_CHAT
+import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_MESSAGES
 import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_CHATS
 import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_USERS
 import com.example.mychat.data.storage.StorageConstants.KEY_DELETED
 import com.example.mychat.data.storage.StorageConstants.KEY_EMAIL
 import com.example.mychat.data.storage.StorageConstants.KEY_FCM_TOKEN
+import com.example.mychat.data.storage.StorageConstants.KEY_INDEX
+import com.example.mychat.data.storage.StorageConstants.KEY_LAST_INDEX
 import com.example.mychat.data.storage.StorageConstants.KEY_LAST_MESSAGE
 import com.example.mychat.data.storage.StorageConstants.KEY_MESSAGE
 import com.example.mychat.data.storage.StorageConstants.KEY_PASSWORD
+import com.example.mychat.data.storage.StorageConstants.KEY_TIMESTAMP
 import com.example.mychat.data.storage.StorageConstants.KEY_USERS_ID_ARRAY
 import com.example.mychat.domain.models.AuthData
 import com.example.mychat.domain.models.Chat
@@ -27,12 +29,9 @@ import com.example.mychat.domain.repository.ResultData
 import com.google.firebase.firestore.*
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.channelFlow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.util.*
@@ -163,28 +162,38 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         chatMessage: ChatMessage,
         flow: FlowCollector<ResultData<Boolean>>,
     ): Boolean {
-        val documentReference = firestoreDb.collection(KEY_COLLECTION_CHAT)
         val chatRef = firestoreDb.collection(KEY_COLLECTION_CHATS).document(chatMessage.chat.id)
         val senderRef =
             firestoreDb.collection(KEY_COLLECTION_USERS).document(chatMessage.sender.id)
-        val messageFirestore = ChatMessageFirestore(
-            null,
-            chatRef,
-            senderRef,
-            chatMessage.message,
-            chatMessage.date,
-            false
-        )
 
         try {
-            documentReference.add(messageFirestore).await()
-            chatRef.update(KEY_LAST_MESSAGE, chatMessage.message)
+            var newIndex: Long? = null
+            firestoreDb.runTransaction {
+                newIndex = it.get(chatRef).getLong(KEY_LAST_INDEX)?.plus(1) ?: 0
+                it.update(
+                    chatRef,
+                    mapOf(
+                        Pair(KEY_LAST_MESSAGE, chatMessage.message),
+                        Pair(KEY_LAST_INDEX, newIndex)
+                    )
+                )
+            }.await()
+            val messageFirestore = ChatMessageFirestore(
+                null,
+                newIndex,
+                senderRef,
+                chatMessage.message,
+                chatMessage.date,
+                false
+            )
+            chatRef.collection(KEY_COLLECTION_MESSAGES).add(messageFirestore).await()
             flow.emit(ResultData.success(true))
             return true
         } catch (error: FirebaseFirestoreException) {
             flow.emit(ResultData.failure(error.localizedMessage))
             return false
         }
+
     }
 
     override suspend fun fetchNewMessages(
@@ -193,7 +202,7 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         val chatRef: DocumentReference =
             firestoreDb.collection(KEY_COLLECTION_CHATS).document(chat.id)
         val query: Query = firestoreDb
-            .collection(KEY_COLLECTION_CHAT)
+            .collection(KEY_COLLECTION_MESSAGES)
             .whereEqualTo(KEY_CHAT_ID, chatRef)
         var chatRegistration: ListenerRegistration? = null
         try {
@@ -226,6 +235,30 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
             awaitClose {
                 chatRegistration?.remove()
             }
+        }
+
+    }
+    override  suspend fun fetchPagingMessages(
+        chat: Chat,
+        page: Int,
+        pageSize: Int
+    ) : ResultData<List<ChatMessageFirestore>> {
+        val chatRef: DocumentReference =
+            firestoreDb.collection(KEY_COLLECTION_CHATS).document(chat.id)
+        val lastIndex = chatRef.get().await().getLong(KEY_LAST_INDEX) ?: 0
+        var indexEnd = lastIndex - page.toLong() * pageSize.toLong()
+        if (indexEnd < 0) indexEnd = 0
+        val query: Query = chatRef
+            .collection(KEY_COLLECTION_MESSAGES)
+            .orderBy(KEY_INDEX)
+            .endAt(indexEnd)
+            .limit(pageSize.toLong())
+        try {
+            return ResultData.success(
+                query.get().await().documents.map { it.toObject(ChatMessageFirestore::class.java)!! }
+            )
+        } catch (error: FirebaseFirestoreException) {
+            return ResultData.failure(error.localizedMessage)
         }
 
     }
@@ -333,7 +366,7 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         chatMessage: ChatMessage,
         flow: FlowCollector<ResultData<ChatMessage>>,
     ) {
-        val messageRef = firestoreDb.collection(KEY_COLLECTION_CHAT).document(chatMessage.id)
+        val messageRef = firestoreDb.collection(KEY_COLLECTION_MESSAGES).document(chatMessage.id)
         try {
             messageRef.update(KEY_MESSAGE, chatMessage.message).await()
             flow.emit(ResultData.success(chatMessage))
@@ -346,7 +379,7 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         chatMessage: ChatMessage,
         flow: FlowCollector<ResultData<ChatMessage>>,
     ) {
-        val messageRef = firestoreDb.collection(KEY_COLLECTION_CHAT).document(chatMessage.id)
+        val messageRef = firestoreDb.collection(KEY_COLLECTION_MESSAGES).document(chatMessage.id)
         try {
             messageRef.update(KEY_DELETED, true).await()
             flow.emit(ResultData.success(chatMessage))

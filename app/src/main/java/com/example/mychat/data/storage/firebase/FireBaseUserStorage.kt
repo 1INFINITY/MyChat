@@ -35,6 +35,12 @@ interface FireBaseUserStorage {
         chat: Chat,
     ): Flow<ResultData<ChatMessageFirestore>>
 
+    suspend fun fetchPagingMessages(
+        chat: Chat,
+        page: Int,
+        pageSize: Int
+    ): ResultData<List<ChatMessageFirestore>>
+
     suspend fun findChatByRef(chatRef: DocumentReference): ChatFirestore
 
     suspend fun createNewChat(userSender: User, users: List<User>, flow: FlowCollector<ResultData<Chat>>)

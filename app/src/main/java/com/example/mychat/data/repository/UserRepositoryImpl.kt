@@ -4,6 +4,7 @@ import com.example.mychat.data.mapping.ImageMapper
 import com.example.mychat.data.mapping.UserMapper
 import com.example.mychat.data.models.ChatFirestore
 import com.example.mychat.data.models.ChatMessageFirestore
+import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_CHATS
 import com.example.mychat.data.storage.firebase.FireBaseUserStorage
 import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorage
 import com.example.mychat.domain.models.AuthData
@@ -12,7 +13,9 @@ import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.trySendBlocking
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flow
@@ -72,24 +75,35 @@ class UserRepositoryImpl(
             when (it) {
                 is ResultData.Success -> {
                     trySendBlocking((ResultData.success(
-                        messageMapping(chatMessageFirestore = it.value))))
+                        messageMapping(chatMessageFirestore = it.value, chat = chat))))
                 }
                 is ResultData.Update -> {
                     trySendBlocking((ResultData.update(
-                        messageMapping(chatMessageFirestore = it.value))))
+                        messageMapping(chatMessageFirestore = it.value, chat = chat))))
                 }
                 is ResultData.Removed -> {
                     trySendBlocking((ResultData.removed(
-                        messageMapping(chatMessageFirestore = it.value))))
+                        messageMapping(chatMessageFirestore = it.value, chat = chat))))
                 }
                 else -> {}
             }
         }
     }
 
-    private suspend fun messageMapping(chatMessageFirestore: ChatMessageFirestore): ChatMessage {
+    override suspend fun fetchPagingMessages(
+        chat: Chat,
+        page: Int,
+        pageSize: Int,
+    ) : ResultData<List<ChatMessage>> {
+        val response = firebaseStorage.fetchPagingMessages(chat = chat, page = page, pageSize = pageSize)
+        if (response is ResultData.Success)
+            return ResultData.success(response.value.map {messageMapping(it, chat)})
+        return ResultData.failure("Paging error")
+    }
+
+     private suspend fun messageMapping(chatMessageFirestore: ChatMessageFirestore, chat: Chat): ChatMessage {
         val chatFirestore: ChatFirestore =
-            firebaseStorage.findChatByRef(chatMessageFirestore.chatId!!)
+            firebaseStorage.findChatByRef(FirebaseFirestore.getInstance().collection(KEY_COLLECTION_CHATS).document(chat.id))
         val userSender: User = firebaseStorage.findUserByRef(chatMessageFirestore.senderId!!)
         val chat: Chat = chatMapping(userSender = userSender, chatFirestore = chatFirestore)
         return ChatMessage(

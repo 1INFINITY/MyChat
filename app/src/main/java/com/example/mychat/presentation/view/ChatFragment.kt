@@ -16,7 +16,9 @@ import androidx.navigation.fragment.navArgs
 import com.example.mychat.R
 import com.example.mychat.databinding.FragmentChatBinding
 import com.example.mychat.domain.models.ChatMessage
+import com.example.mychat.domain.models.User
 import com.example.mychat.presentation.adapters.ChatAdapter
+import com.example.mychat.presentation.adapters.ChatPagingAdapter
 import com.example.mychat.presentation.app.App
 import com.example.mychat.presentation.listeners.ChatMessageListener
 import com.example.mychat.presentation.viewmodels.ChatViewModel
@@ -32,7 +34,13 @@ class ChatFragment : Fragment(), ChatMessageListener {
 
     private lateinit var vm: ChatViewModel
     private lateinit var binding: FragmentChatBinding
-    private lateinit var adapter: ChatAdapter
+    private var sender: User? = null
+    private val adapter by lazy(LazyThreadSafetyMode.NONE) {
+        ChatPagingAdapter(
+            context = requireContext(),
+            sender = sender!!,
+            messageListener = this)
+    }
     private val args: ChatFragmentArgs by navArgs()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,19 +72,20 @@ class ChatFragment : Fragment(), ChatMessageListener {
     private fun initObservers() {
         lifecycleScope.launchWhenStarted {
             vm.uiState.collectLatest {
+                loading(false)
                 loadInitialData(uiState = it)
-                when (it.recyclerViewState) {
-                    is ChatContract.RecyclerViewState.Idle -> {
-                        loading(false)
-                    }
-                    is ChatContract.RecyclerViewState.Loading -> {
-                        loading(true)
-                    }
-                    is ChatContract.RecyclerViewState.Success -> {
-                        loading(false)
-                        adapter.submitList(it.recyclerViewState.chatMessages)
-                    }
-                }
+//                when (it.recyclerViewState) {
+//                    is ChatContract.RecyclerViewState.Idle -> {
+//                        loading(false)
+//                    }
+//                    is ChatContract.RecyclerViewState.Loading -> {
+//                        loading(true)
+//                    }
+//                    is ChatContract.RecyclerViewState.Success -> {
+//                        loading(false)
+//                        //adapter.submitData(it.recyclerViewState.chatMessages)
+//                    }
+//                }
 
                 when (it.changeMessageState) {
                     is ChatContract.ChangeMessageState.Idle -> {
@@ -89,6 +98,7 @@ class ChatFragment : Fragment(), ChatMessageListener {
                 }
             }
         }
+
         lifecycleScope.launchWhenStarted {
             vm.effect.collect {
                 when (it) {
@@ -117,6 +127,7 @@ class ChatFragment : Fragment(), ChatMessageListener {
             binding.headerCommon.visibility = View.VISIBLE
         }
     }
+
     private fun loading(isLoading: Boolean) {
         if (isLoading) {
             binding.recyclerViewChat.visibility = View.INVISIBLE
@@ -130,17 +141,23 @@ class ChatFragment : Fragment(), ChatMessageListener {
     private fun loadInitialData(uiState: ChatContract.State) {
         binding.textName.text = uiState.chatName
         uiState.sender?.let { user ->
-            if (!this::adapter.isInitialized) {
-                adapter = ChatAdapter(sender = user, messageListener = this)
+            if(sender == null){
+                sender = user
                 binding.recyclerViewChat.adapter = adapter
+                lifecycleScope.launchWhenStarted {
+                    vm.pagingMessages.collectLatest(adapter::submitData)
+                }
+                loading(false)
             }
         }
     }
+
     private fun confirmChangeMessage() {
         val message: String = binding.inputMessage.text.toString()
         vm.setEvent(ChatContract.Event.OnConfirmButtonClicked(changedMessage = message))
         binding.inputMessage.text = null
     }
+
     private fun sendMessage() {
         val message: String = binding.inputMessage.text.toString()
         vm.setEvent(ChatContract.Event.MessageSent(message = message))
@@ -151,13 +168,13 @@ class ChatFragment : Fragment(), ChatMessageListener {
         activity?.let {
             val builder = AlertDialog.Builder(it)
             builder.setItems(R.array.message_action
-                ) { dialog, actionIndex ->
-                    when (actionIndex) {
-                        0 -> vm.setEvent(ChatContract.Event.OnMessageDeleteClicked(message = message))
-                        1 -> vm.setEvent(ChatContract.Event.OnMessageChangeClicked(message = message))
-                    }
-                    dialog.cancel()
+            ) { dialog, actionIndex ->
+                when (actionIndex) {
+                    0 -> vm.setEvent(ChatContract.Event.OnMessageDeleteClicked(message = message))
+                    1 -> vm.setEvent(ChatContract.Event.OnMessageChangeClicked(message = message))
                 }
+                dialog.cancel()
+            }
             builder.create().show()
         } ?: throw IllegalStateException("Activity cannot be null")
     }

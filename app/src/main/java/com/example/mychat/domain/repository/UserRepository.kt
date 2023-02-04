@@ -1,5 +1,6 @@
 package com.example.mychat.domain.repository
 
+import com.example.mychat.data.models.ChatMessageFirestore
 import com.example.mychat.domain.models.AuthData
 import com.example.mychat.domain.models.Chat
 import com.example.mychat.domain.models.ChatMessage
@@ -21,6 +22,9 @@ interface UserRepository {
     fun sendMessage(chatMessage: ChatMessage): Flow<ResultData<Boolean>>
 
     fun fetchMessages(chat: Chat): Flow<ResultData<ChatMessage>>
+
+    //Paging test
+    suspend fun fetchPagingMessages(chat: Chat, page: Int, pageSize: Int): ResultData<List<ChatMessage>>
 
     fun createNewChat(userSender: User, users: List<User>): Flow<ResultData<Chat>>
 

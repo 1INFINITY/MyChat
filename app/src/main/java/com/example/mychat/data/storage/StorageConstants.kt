@@ -11,15 +11,17 @@ object StorageConstants {
     const val KEY_IMAGE = "image"
     const val KEY_FCM_TOKEN = "fcmToken"
 
-    const val KEY_COLLECTION_CHAT = "messages"
+    const val KEY_COLLECTION_MESSAGES = "messages"
     const val KEY_CHAT_ID = "chatId"
     const val KEY_SENDER_ID = "senderId"
     const val KEY_MESSAGE = "message"
     const val KEY_TIMESTAMP = "timestamp"
     const val KEY_DELETED = "deleted"
+    const val KEY_INDEX = "index"
 
     const val KEY_COLLECTION_CHATS = "chats"
     const val KEY_USERS_ID_ARRAY = "usersIdArray"
     const val KEY_LAST_MESSAGE = "lastMessage"
     const val KEY_CHAT_NAME = "chatName"
+    const val KEY_LAST_INDEX = "lastIndex"
 }
