@@ -1,5 +1,6 @@
 package com.example.mychat.domain.repository
 
+import androidx.paging.PagingData
 import com.example.mychat.data.models.ChatMessageFirestore
 import com.example.mychat.domain.models.AuthData
 import com.example.mychat.domain.models.Chat
@@ -8,6 +9,8 @@ import com.example.mychat.domain.models.User
 import kotlinx.coroutines.flow.Flow
 
 interface UserRepository {
+
+    fun getMessages(chat: Chat): Flow<PagingData<ChatMessage>>
 
     fun uploadUserList(): Flow<ResultData<List<User>>>
 

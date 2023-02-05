@@ -12,6 +12,7 @@ import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
 import com.example.mychat.domain.usecase.*
+import com.example.mychat.presentation.adapters.ChatPagingAdapter
 import com.example.mychat.presentation.viewmodels.base.BaseViewModel
 import com.example.mychat.presentation.viewmodels.сontracts.ChatContract
 import kotlinx.coroutines.Job
@@ -40,12 +41,11 @@ class ChatViewModel(
     private var chatListenJob: Job? = null
     private var messages: MutableList<ChatMessage> = mutableListOf()
 
-    val pagingMessages: StateFlow<PagingData<ChatMessage>> = Pager<Int, ChatMessage>(
-        PagingConfig(pageSize = 20, initialLoadSize = 20)
-    ) {
-        pagingSourceFactory.create(chat = chat)
-    }.flow.stateIn(viewModelScope, SharingStarted.Lazily, PagingData.empty())
-
+    val pagingMessages: StateFlow<PagingData<ChatMessage>> by lazy(LazyThreadSafetyMode.NONE) {
+        repository
+            .getMessages(chat = chat)
+            .stateIn(viewModelScope, SharingStarted.Lazily, PagingData.empty())
+    }
     override fun createInitialState(): ChatContract.State {
 
         return ChatContract.State(

@@ -1,6 +1,9 @@
 package com.example.mychat.presentation.di
 
 import android.content.Context
+import androidx.paging.ExperimentalPagingApi
+import com.example.mychat.data.models.ChatMessagePageSource
+import com.example.mychat.data.repository.MessagesRemoteMediator
 import com.example.mychat.data.repository.UserRepositoryImpl
 import com.example.mychat.data.storage.firebase.FireBaseStorageImpl
 import com.example.mychat.data.storage.firebase.FireBaseUserStorage
@@ -25,13 +28,19 @@ class DataModule {
         return SharedPreferencesStorageImpl(appContext = appContext)
     }
 
+    @ExperimentalPagingApi
     @Provides
     fun provideUserRepository(
         fireBaseUserStorage: FireBaseUserStorage,
         sharedPreferencesStorage: SharedPreferencesStorage,
+        remoteMediatorFactory: MessagesRemoteMediator.Factory,
+        pagingSourceFactory: ChatMessagePageSource.Factory,
     ): UserRepository {
         return UserRepositoryImpl(
             firebaseStorage = fireBaseUserStorage,
-            sharedPrefsStorage = sharedPreferencesStorage)
+            sharedPrefsStorage = sharedPreferencesStorage,
+            remoteMediatorFactory = remoteMediatorFactory,
+            pagingSourceFactory = pagingSourceFactory,
+        )
     }
 }

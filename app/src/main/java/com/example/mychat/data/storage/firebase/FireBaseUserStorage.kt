@@ -8,6 +8,7 @@ import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.DocumentSnapshot
 import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
@@ -40,6 +41,12 @@ interface FireBaseUserStorage {
         page: Int,
         pageSize: Int
     ): ResultData<List<ChatMessageFirestore>>
+
+    suspend fun fetchMessages(
+        chat: Chat,
+        limit: Int,
+        offset: DocumentSnapshot?
+    ): FetchMessagesResult
 
     suspend fun findChatByRef(chatRef: DocumentReference): ChatFirestore
 

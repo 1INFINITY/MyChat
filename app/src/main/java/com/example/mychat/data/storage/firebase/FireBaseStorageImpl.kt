@@ -27,6 +27,7 @@ import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.google.firebase.firestore.*
+import com.google.firebase.firestore.ktx.toObject
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.channels.awaitClose
@@ -264,6 +265,27 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
             return ResultData.failure(error.localizedMessage)
         }
 
+    }
+
+    override suspend fun fetchMessages(
+        chat: Chat,
+        limit: Int,
+        offset: DocumentSnapshot?,
+    ): FetchMessagesResult {
+
+        val list = firestoreDb
+            .collection(KEY_COLLECTION_CHATS)
+            .document(chat.id)
+            .collection(KEY_COLLECTION_MESSAGES)
+            .endAt(offset)
+            .limitToLast(limit.toLong())
+            .get().await().documents
+        val newOffset: DocumentSnapshot = list.first()
+
+        return FetchMessagesResult(
+            list = list.map { it.toObject(ChatMessageFirestore::class.java)!! },
+            currentOffset = newOffset
+        )
     }
 
     override suspend fun findChatByRef(chatRef: DocumentReference): ChatFirestore {

@@ -1,9 +1,14 @@
 package com.example.mychat.data.repository
 
+import androidx.paging.ExperimentalPagingApi
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import com.example.mychat.data.mapping.ImageMapper
 import com.example.mychat.data.mapping.UserMapper
 import com.example.mychat.data.models.ChatFirestore
 import com.example.mychat.data.models.ChatMessageFirestore
+import com.example.mychat.data.models.ChatMessagePageSource
 import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_CHATS
 import com.example.mychat.data.storage.firebase.FireBaseUserStorage
 import com.example.mychat.data.storage.sharedPrefs.SharedPreferencesStorage
@@ -15,16 +20,26 @@ import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.trySendBlocking
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.*
 
-class UserRepositoryImpl(
+@ExperimentalPagingApi
+class UserRepositoryImpl constructor(
     private val firebaseStorage: FireBaseUserStorage,
     private val sharedPrefsStorage: SharedPreferencesStorage,
+    private val remoteMediatorFactory: MessagesRemoteMediator.Factory,
+    private val pagingSourceFactory: ChatMessagePageSource.Factory
 ) : UserRepository {
 
+    override fun getMessages(chat: Chat): Flow<PagingData<ChatMessage>> {
+        return Pager(
+            config = PagingConfig(
+                pageSize = 10,
+                initialLoadSize = 10
+            ),
+            remoteMediator = remoteMediatorFactory.create(chat = chat),
+            pagingSourceFactory = { pagingSourceFactory.create(chat = chat) }
+        ).flow
+    }
     override fun uploadUserList() = flow<ResultData<List<User>>> {
         emit(ResultData.loading(null))
         firebaseStorage.getAllUsers(flow = this)
