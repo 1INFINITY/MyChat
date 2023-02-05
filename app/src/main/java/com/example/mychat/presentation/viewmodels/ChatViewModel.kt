@@ -209,12 +209,11 @@ class ChatViewModel(
     private fun trySendMessage(message: String) {
         val message = ChatMessage(
             id = "",
-            chat = chat,
             sender = userSender,
             message = message,
             date = Date())
         viewModelScope.launch {
-            sendMessageUseCase.execute(chatMessage = message).collect {
+            sendMessageUseCase.execute(chatMessage = message, chat = chat).collect {
                 when (it) {
                     is ResultData.Success -> Log.d("Chat", it.value.toString())
                 }

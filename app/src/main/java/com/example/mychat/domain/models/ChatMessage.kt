@@ -4,7 +4,6 @@ import java.util.*
 
 data class ChatMessage(
     val id: String,
-    val chat: Chat,
     val sender: User,
     val message: String,
     val date: Date

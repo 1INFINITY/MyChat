@@ -27,7 +27,7 @@ interface FireBaseUserStorage {
 
     suspend fun getAllUsers(flow: FlowCollector<ResultData<List<User>>>): List<User>?
 
-    suspend fun sendMessage(chatMessage: ChatMessage, flow: FlowCollector<ResultData<Boolean>>): Boolean
+    suspend fun sendMessage(chatMessage: ChatMessage, chat: Chat, flow: FlowCollector<ResultData<Boolean>>): Boolean
 
     suspend fun userAuthorization(authData: AuthData, flow: FlowCollector<ResultData<User>>): User?
 

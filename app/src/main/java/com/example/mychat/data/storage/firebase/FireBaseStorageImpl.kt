@@ -160,9 +160,10 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
 
     override suspend fun sendMessage(
         chatMessage: ChatMessage,
+        chat: Chat,
         flow: FlowCollector<ResultData<Boolean>>,
     ): Boolean {
-        val chatRef = firestoreDb.collection(KEY_COLLECTION_CHATS).document(chatMessage.chat.id)
+        val chatRef = firestoreDb.collection(KEY_COLLECTION_CHATS).document(chat.id)
         val senderRef =
             firestoreDb.collection(KEY_COLLECTION_USERS).document(chatMessage.sender.id)
 
@@ -201,7 +202,7 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
     ) = channelFlow<ResultData<ChatMessageFirestore>> {
         val chatRef: DocumentReference =
             firestoreDb.collection(KEY_COLLECTION_CHATS).document(chat.id)
-        val query: Query = firestoreDb
+        val query: Query = chatRef
             .collection(KEY_COLLECTION_MESSAGES)
             .whereEqualTo(KEY_CHAT_ID, chatRef)
         var chatRegistration: ListenerRegistration? = null

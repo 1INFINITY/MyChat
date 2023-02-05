@@ -19,7 +19,7 @@ interface UserRepository {
 
     fun getCachedUser(): User
 
-    fun sendMessage(chatMessage: ChatMessage): Flow<ResultData<Boolean>>
+    fun sendMessage(chatMessage: ChatMessage, chat: Chat): Flow<ResultData<Boolean>>
 
     fun fetchMessages(chat: Chat): Flow<ResultData<ChatMessage>>
 
