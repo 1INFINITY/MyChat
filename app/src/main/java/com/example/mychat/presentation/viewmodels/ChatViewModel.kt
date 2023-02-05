@@ -111,7 +111,6 @@ class ChatViewModel(
                 when (it) {
                     is ResultData.Success -> {
                         chat = it.value
-                        repository.fetchPagingMessages(chat = chat, page = 1, pageSize = 5)
                     }
                     is ResultData.Loading -> {
                         setState {

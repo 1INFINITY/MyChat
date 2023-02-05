@@ -246,13 +246,15 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         val chatRef: DocumentReference =
             firestoreDb.collection(KEY_COLLECTION_CHATS).document(chat.id)
         val lastIndex = chatRef.get().await().getLong(KEY_LAST_INDEX) ?: 0
+        var indexStart = lastIndex - (1 + page.toLong()) * pageSize.toLong() + 1
         var indexEnd = lastIndex - page.toLong() * pageSize.toLong()
         if (indexEnd < 0) indexEnd = 0
+        if (indexStart < 0) indexStart = 0
         val query: Query = chatRef
             .collection(KEY_COLLECTION_MESSAGES)
             .orderBy(KEY_INDEX)
+            .startAt(indexStart)
             .endAt(indexEnd)
-            .limit(pageSize.toLong())
         try {
             return ResultData.success(
                 query.get().await().documents.map { it.toObject(ChatMessageFirestore::class.java)!! }

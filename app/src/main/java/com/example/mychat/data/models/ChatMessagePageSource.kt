@@ -30,8 +30,8 @@ class ChatMessagePageSource @AssistedInject constructor(
 
         if (response is ResultData.Success) {
             val messages = response.value
-            val nextKey = if (messages.size < pageSize) null else page + 1
-            val prevKey = null//if (page == 1) null else page - 1
+            val nextKey = null
+            val prevKey = if (messages.size < pageSize) null else page + 1
             return LoadResult.Page(messages, prevKey, nextKey)
         } else {
             return LoadResult.Error(Exception("FIRESTORE ERROR"))
