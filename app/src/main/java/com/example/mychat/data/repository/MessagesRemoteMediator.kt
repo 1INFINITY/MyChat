@@ -58,7 +58,7 @@ class MessagesRemoteMediator @AssistedInject constructor(
     private suspend fun fetchMessages(limit: Int): List<ChatMessage> {
 
         val result = fireBaseUserStorage.fetchMessages(chat = chat, limit = limit, offset = offset)
-        offset = result.currentOffset
+        offset = result.nextOffset
 
         return result.list.map { chatMessageFirestore ->
             val userSender: User = fireBaseUserStorage.findUserByRef(chatMessageFirestore.senderId!!)

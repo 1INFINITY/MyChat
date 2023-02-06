@@ -2,39 +2,58 @@ package com.example.mychat.data.models
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
+import com.example.mychat.data.storage.firebase.FireBaseUserStorage
 import com.example.mychat.domain.models.Chat
 import com.example.mychat.domain.models.ChatMessage
+import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.Query
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 
 class ChatMessagePageSource @AssistedInject constructor(
-    private val repository: UserRepository,
+    private val fireBaseUserStorage: FireBaseUserStorage,
     @Assisted("chat") private val chat: Chat,
-) : PagingSource<Int, ChatMessage>() {
-    override fun getRefreshKey(state: PagingState<Int, ChatMessage>): Int? {
+) : PagingSource<DocumentSnapshot, ChatMessage>() {
+
+    private var prevOffset: DocumentSnapshot? = null
+    private var nextOffset: DocumentSnapshot? = null
+
+    override fun getRefreshKey(state: PagingState<DocumentSnapshot, ChatMessage>): DocumentSnapshot? {
         val anchorPosition = state.anchorPosition ?: return null
         val page = state.closestPageToPosition(anchorPosition) ?: return null
-        return page.prevKey?.plus(1) ?: page.nextKey?.minus(1)
+        return page.prevKey ?: page.nextKey
     }
 
-    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, ChatMessage> {
+    override suspend fun load(params: LoadParams<DocumentSnapshot>): LoadResult<DocumentSnapshot, ChatMessage> {
 
-        val page: Int = params.key ?: 0
-        val pageSize: Int = params.loadSize
-
-        val response = repository.fetchPagingMessages(chat = chat, page = page, pageSize = pageSize)
-
-        if (response is ResultData.Success) {
-            val messages = response.value
+        val limit = params.loadSize
+        return try {
+            val messages = fetchMessages(limit = limit)
             val nextKey = null
-            val prevKey = if (messages.size < pageSize) null else page + 1
+            val prevKey = if (messages.size < limit) null else nextOffset
             return LoadResult.Page(messages, prevKey, nextKey)
-        } else {
-            return LoadResult.Error(Exception("FIRESTORE ERROR"))
+        } catch (e: Exception) {
+            LoadResult.Error(e)
+        }
+    }
+    private suspend fun fetchMessages(limit: Int): List<ChatMessage> {
+
+        val result = fireBaseUserStorage.fetchMessages(chat = chat, limit = limit, offset = nextOffset)
+        prevOffset = result.prevOffset
+        nextOffset = result.nextOffset
+
+        return result.list.map { chatMessageFirestore ->
+            val userSender: User = fireBaseUserStorage.findUserByRef(chatMessageFirestore.senderId!!)
+            ChatMessage(
+                id = chatMessageFirestore.id!!,
+                sender = userSender,
+                message = chatMessageFirestore.message!!,
+                date = chatMessageFirestore.timestamp!!
+            )
         }
     }
     @AssistedFactory

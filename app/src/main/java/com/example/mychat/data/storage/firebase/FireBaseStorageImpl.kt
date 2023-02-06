@@ -272,19 +272,30 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         limit: Int,
         offset: DocumentSnapshot?,
     ): FetchMessagesResult {
-
-        val list = firestoreDb
-            .collection(KEY_COLLECTION_CHATS)
-            .document(chat.id)
-            .collection(KEY_COLLECTION_MESSAGES)
-            .endAt(offset)
-            .limitToLast(limit.toLong())
-            .get().await().documents
-        val newOffset: DocumentSnapshot = list.first()
+        var list: MutableList<DocumentSnapshot>? = null
+        if (offset == null)
+            list = firestoreDb
+                .collection(KEY_COLLECTION_CHATS)
+                .document(chat.id)
+                .collection(KEY_COLLECTION_MESSAGES)
+                .orderBy(KEY_TIMESTAMP)
+                .limitToLast(limit.toLong())
+                .get().await().documents
+        else
+            list = firestoreDb
+                .collection(KEY_COLLECTION_CHATS)
+                .document(chat.id)
+                .collection(KEY_COLLECTION_MESSAGES)
+                .orderBy(KEY_TIMESTAMP)
+                .endBefore(offset)
+                .limitToLast(limit.toLong())
+                .get().await().documents
+        val newOffset: DocumentSnapshot? = list.first()
 
         return FetchMessagesResult(
             list = list.map { it.toObject(ChatMessageFirestore::class.java)!! },
-            currentOffset = newOffset
+            nextOffset = newOffset,
+            prevOffset = offset
         )
     }
 

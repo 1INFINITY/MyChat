@@ -36,7 +36,6 @@ class UserRepositoryImpl constructor(
                 pageSize = 10,
                 initialLoadSize = 10
             ),
-            remoteMediator = remoteMediatorFactory.create(chat = chat),
             pagingSourceFactory = { pagingSourceFactory.create(chat = chat) }
         ).flow
     }

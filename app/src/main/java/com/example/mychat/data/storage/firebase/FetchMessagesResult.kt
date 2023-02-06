@@ -5,5 +5,6 @@ import com.google.firebase.firestore.DocumentSnapshot
 
 data class FetchMessagesResult(
     val list: List<ChatMessageFirestore>,
-    val currentOffset: DocumentSnapshot,
+    val prevOffset: DocumentSnapshot?,
+    val nextOffset: DocumentSnapshot?,
 )
