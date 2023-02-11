@@ -6,10 +6,7 @@ import com.example.mychat.data.storage.firebase.FireBaseUserStorage
 import com.example.mychat.domain.models.Chat
 import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
-import com.example.mychat.domain.repository.ResultData
-import com.example.mychat.domain.repository.UserRepository
 import com.google.firebase.firestore.DocumentSnapshot
-import com.google.firebase.firestore.Query
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -40,14 +37,16 @@ class ChatMessagePageSource @AssistedInject constructor(
             LoadResult.Error(e)
         }
     }
-    private suspend fun fetchMessages(limit: Int): List<ChatMessage> {
 
-        val result = fireBaseUserStorage.fetchMessages(chat = chat, limit = limit, offset = nextOffset)
+    private suspend fun fetchMessages(limit: Int): List<ChatMessage> {
+        val result =
+            fireBaseUserStorage.fetchMessages(chat = chat, limit = limit, offset = nextOffset)
         prevOffset = result.prevOffset
         nextOffset = result.nextOffset
 
         return result.list.map { chatMessageFirestore ->
-            val userSender: User = fireBaseUserStorage.findUserByRef(chatMessageFirestore.senderId!!)
+            val userSender: User =
+                fireBaseUserStorage.findUserByRef(chatMessageFirestore.senderId!!)
             ChatMessage(
                 id = chatMessageFirestore.id!!,
                 sender = userSender,
@@ -56,10 +55,13 @@ class ChatMessagePageSource @AssistedInject constructor(
             )
         }
     }
+
     @AssistedFactory
     interface Factory {
 
-        fun create(@Assisted("chat") chat: Chat): ChatMessagePageSource
+        fun create(
+            @Assisted("chat") chat: Chat,
+        ): ChatMessagePageSource
     }
 
 }

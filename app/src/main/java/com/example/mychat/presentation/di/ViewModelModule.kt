@@ -1,9 +1,7 @@
 package com.example.mychat.presentation.di
 
 import androidx.lifecycle.ViewModel
-import androidx.paging.InvalidatingPagingSourceFactory
 import com.example.mychat.data.models.ChatMessagePageSource
-import com.example.mychat.domain.models.Chat
 import com.example.mychat.domain.repository.UserRepository
 import com.example.mychat.domain.usecase.*
 import com.example.mychat.presentation.viewmodels.*
@@ -11,7 +9,6 @@ import dagger.MapKey
 import dagger.Module
 import dagger.Provides
 import dagger.multibindings.IntoMap
-import javax.inject.Provider
 import kotlin.reflect.KClass
 
 @MapKey
@@ -77,23 +74,20 @@ class ViewModelModule {
     @ViewModelKey(ChatViewModel::class)
     @Provides
     fun provideChatViewModel(
-        repository: UserRepository,
         getCachedUserUseCase: GetCachedUserUseCase,
         loadChatUseCase: LoadChatUseCase,
         observeChatUseCase: ObserveChatUseCase,
         sendMessageUseCase: SendMessageUseCase,
         changeMessageUseCase: ChangeMessageUseCase,
         deleteMessageUseCase: DeleteMessageUseCase,
-        pagingSourceFactory: ChatMessagePageSource.Factory
     ): ViewModel {
         return ChatViewModel(
-            repository = repository,
             getCachedUserUseCase = getCachedUserUseCase,
             loadChatUseCase = loadChatUseCase,
             observeChatUseCase = observeChatUseCase,
             sendMessageUseCase = sendMessageUseCase,
             changeMessageUseCase = changeMessageUseCase,
             deleteMessageUseCase = deleteMessageUseCase,
-            pagingSourceFactory = pagingSourceFactory)
+        )
     }
 }

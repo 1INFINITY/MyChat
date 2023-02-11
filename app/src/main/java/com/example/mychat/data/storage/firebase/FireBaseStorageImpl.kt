@@ -7,14 +7,12 @@ import com.example.mychat.data.mapping.UserRegisteredMapper
 import com.example.mychat.data.models.ChatFirestore
 import com.example.mychat.data.models.ChatMessageFirestore
 import com.example.mychat.data.models.UserFirestore
-import com.example.mychat.data.storage.StorageConstants.KEY_CHAT_ID
-import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_MESSAGES
 import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_CHATS
+import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_MESSAGES
 import com.example.mychat.data.storage.StorageConstants.KEY_COLLECTION_USERS
 import com.example.mychat.data.storage.StorageConstants.KEY_DELETED
 import com.example.mychat.data.storage.StorageConstants.KEY_EMAIL
 import com.example.mychat.data.storage.StorageConstants.KEY_FCM_TOKEN
-import com.example.mychat.data.storage.StorageConstants.KEY_INDEX
 import com.example.mychat.data.storage.StorageConstants.KEY_LAST_INDEX
 import com.example.mychat.data.storage.StorageConstants.KEY_LAST_MESSAGE
 import com.example.mychat.data.storage.StorageConstants.KEY_MESSAGE
@@ -27,15 +25,15 @@ import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.google.firebase.firestore.*
-import com.google.firebase.firestore.ktx.toObject
 import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.channelFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import java.util.*
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 
@@ -122,6 +120,29 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
         }
     }
 
+    override fun setCallbackOnChatUpdates(
+        scope: CoroutineScope,
+        chat: Chat,
+        callback: () -> (Unit)
+    ) {
+        scope.launch {
+            var registration: ListenerRegistration? = null
+            try {
+                registration = firestoreDb
+                    .collection(KEY_COLLECTION_CHATS)
+                    .document(chat.id)
+                    .collection(KEY_COLLECTION_MESSAGES)
+                    .addSnapshotListener { q: QuerySnapshot?, e: FirebaseFirestoreException? ->
+                        if (e == null && q != null && !q.isEmpty && !q.metadata.isFromCache)
+                            callback()
+                    }
+                awaitCancellation()
+            } finally {
+                registration?.remove()
+            }
+        }
+    }
+
     override suspend fun updateToken(userId: String) {
         val documentReference = firestoreDb.collection(KEY_COLLECTION_USERS).document(userId)
         val token: String = FirebaseMessaging.getInstance().token.await()
@@ -198,75 +219,6 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
 
     }
 
-    override suspend fun fetchNewMessages(
-        chat: Chat
-    ) = channelFlow<ResultData<ChatMessageFirestore>> {
-        val chatRef: DocumentReference =
-            firestoreDb.collection(KEY_COLLECTION_CHATS).document(chat.id)
-        val query: Query = chatRef
-            .collection(KEY_COLLECTION_MESSAGES)
-            .whereEqualTo(KEY_CHAT_ID, chatRef)
-        var chatRegistration: ListenerRegistration? = null
-        try {
-            chatRegistration = query.addSnapshotListener { value, error ->
-                GlobalScope.launch {
-                    if (error == null) {
-                        value?.documentChanges?.map { doc ->
-                            val isAdded = doc.type == DocumentChange.Type.ADDED
-                            val isUpdate = doc.type == DocumentChange.Type.MODIFIED
-                            val isRemoved = doc.document.getBoolean(KEY_DELETED) ?: false
-
-                            val chatMessageFirestore = doc.document.toObject(ChatMessageFirestore::class.java)
-                            if (isAdded && !isRemoved)
-                                send(ResultData.success(chatMessageFirestore))
-                            else if (isUpdate)
-                                if (isRemoved)
-                                    send(ResultData.removed(chatMessageFirestore))
-                                else
-                                    send(ResultData.update(chatMessageFirestore))
-                        }
-                    } else {
-                        send(ResultData.failure(error.localizedMessage))
-                    }
-                }
-            }
-
-        } catch (error: FirebaseFirestoreException) {
-            send(ResultData.failure(error.localizedMessage))
-        } finally {
-            awaitClose {
-                chatRegistration?.remove()
-            }
-        }
-
-    }
-    override  suspend fun fetchPagingMessages(
-        chat: Chat,
-        page: Int,
-        pageSize: Int
-    ) : ResultData<List<ChatMessageFirestore>> {
-        val chatRef: DocumentReference =
-            firestoreDb.collection(KEY_COLLECTION_CHATS).document(chat.id)
-        val lastIndex = chatRef.get().await().getLong(KEY_LAST_INDEX) ?: 0
-        var indexStart = lastIndex - (1 + page.toLong()) * pageSize.toLong() + 1
-        var indexEnd = lastIndex - page.toLong() * pageSize.toLong()
-        if (indexEnd < 0) indexEnd = 0
-        if (indexStart < 0) indexStart = 0
-        val query: Query = chatRef
-            .collection(KEY_COLLECTION_MESSAGES)
-            .orderBy(KEY_INDEX)
-            .startAt(indexStart)
-            .endAt(indexEnd)
-        try {
-            return ResultData.success(
-                query.get().await().documents.map { it.toObject(ChatMessageFirestore::class.java)!! }
-            )
-        } catch (error: FirebaseFirestoreException) {
-            return ResultData.failure(error.localizedMessage)
-        }
-
-    }
-
     override suspend fun fetchMessages(
         chat: Chat,
         limit: Int,
@@ -323,7 +275,8 @@ class FireBaseStorageImpl(private val firestoreDb: FirebaseFirestore) : FireBase
                 id = newChatId,
                 userSender = userSender,
                 userReceiver = users.find { it.id != userSender.id }!!,
-                lastMessage = lastMessage)
+                lastMessage = lastMessage
+            )
             flow.emit(ResultData.success(newChat))
         } catch (error: FirebaseFirestoreException) {
             flow.emit(ResultData.failure(error.localizedMessage))

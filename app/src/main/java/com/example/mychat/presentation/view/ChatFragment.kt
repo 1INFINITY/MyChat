@@ -74,18 +74,6 @@ class ChatFragment : Fragment(), ChatMessageListener {
             vm.uiState.collectLatest {
                 loading(false)
                 loadInitialData(uiState = it)
-//                when (it.recyclerViewState) {
-//                    is ChatContract.RecyclerViewState.Idle -> {
-//                        loading(false)
-//                    }
-//                    is ChatContract.RecyclerViewState.Loading -> {
-//                        loading(true)
-//                    }
-//                    is ChatContract.RecyclerViewState.Success -> {
-//                        loading(false)
-//                        //adapter.submitData(it.recyclerViewState.chatMessages)
-//                    }
-//                }
 
                 when (it.changeMessageState) {
                     is ChatContract.ChangeMessageState.Idle -> {

@@ -33,13 +33,11 @@ class DataModule {
     fun provideUserRepository(
         fireBaseUserStorage: FireBaseUserStorage,
         sharedPreferencesStorage: SharedPreferencesStorage,
-        remoteMediatorFactory: MessagesRemoteMediator.Factory,
         pagingSourceFactory: ChatMessagePageSource.Factory,
     ): UserRepository {
         return UserRepositoryImpl(
             firebaseStorage = fireBaseUserStorage,
             sharedPrefsStorage = sharedPreferencesStorage,
-            remoteMediatorFactory = remoteMediatorFactory,
             pagingSourceFactory = pagingSourceFactory,
         )
     }

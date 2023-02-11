@@ -1,9 +1,6 @@
 package com.example.mychat.data.repository
 
-import androidx.paging.ExperimentalPagingApi
-import androidx.paging.Pager
-import androidx.paging.PagingConfig
-import androidx.paging.PagingData
+import androidx.paging.*
 import com.example.mychat.data.mapping.ImageMapper
 import com.example.mychat.data.mapping.UserMapper
 import com.example.mychat.data.models.ChatFirestore
@@ -18,7 +15,9 @@ import com.example.mychat.domain.models.ChatMessage
 import com.example.mychat.domain.models.User
 import com.example.mychat.domain.repository.ResultData
 import com.example.mychat.domain.repository.UserRepository
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.trySendBlocking
 import kotlinx.coroutines.flow.*
 
@@ -26,19 +25,27 @@ import kotlinx.coroutines.flow.*
 class UserRepositoryImpl constructor(
     private val firebaseStorage: FireBaseUserStorage,
     private val sharedPrefsStorage: SharedPreferencesStorage,
-    private val remoteMediatorFactory: MessagesRemoteMediator.Factory,
     private val pagingSourceFactory: ChatMessagePageSource.Factory
 ) : UserRepository {
 
-    override fun getMessages(chat: Chat): Flow<PagingData<ChatMessage>> {
+    override fun getMessages(chat: Chat, scope: CoroutineScope): Flow<PagingData<ChatMessage>> {
+        val invalidatingPagingSourceFactory = InvalidatingPagingSourceFactory {
+            pagingSourceFactory.create(chat = chat)
+        }
+        firebaseStorage.setCallbackOnChatUpdates(
+            scope = scope,
+            chat = chat,
+            callback = invalidatingPagingSourceFactory::invalidate
+        )
         return Pager(
             config = PagingConfig(
                 pageSize = 10,
                 initialLoadSize = 10
             ),
-            pagingSourceFactory = { pagingSourceFactory.create(chat = chat) }
+            pagingSourceFactory = invalidatingPagingSourceFactory
         ).flow
     }
+
     override fun uploadUserList() = flow<ResultData<List<User>>> {
         emit(ResultData.loading(null))
         firebaseStorage.getAllUsers(flow = this)
@@ -83,48 +90,6 @@ class UserRepositoryImpl constructor(
         firebaseStorage.sendMessage(chatMessage = chatMessage, chat = chat, flow = this)
     }
 
-    override fun fetchMessages(chat: Chat) = callbackFlow<ResultData<ChatMessage>> {
-        trySendBlocking(ResultData.loading(null))
-        firebaseStorage.fetchNewMessages(chat = chat).collect {
-            when (it) {
-                is ResultData.Success -> {
-                    trySendBlocking((ResultData.success(
-                        messageMapping(chatMessageFirestore = it.value))))
-                }
-                is ResultData.Update -> {
-                    trySendBlocking((ResultData.update(
-                        messageMapping(chatMessageFirestore = it.value))))
-                }
-                is ResultData.Removed -> {
-                    trySendBlocking((ResultData.removed(
-                        messageMapping(chatMessageFirestore = it.value))))
-                }
-                else -> {}
-            }
-        }
-    }
-
-    override suspend fun fetchPagingMessages(
-        chat: Chat,
-        page: Int,
-        pageSize: Int,
-    ) : ResultData<List<ChatMessage>> {
-        val response = firebaseStorage.fetchPagingMessages(chat = chat, page = page, pageSize = pageSize)
-        if (response is ResultData.Success)
-            return ResultData.success(response.value.map {messageMapping(it)})
-        return ResultData.failure("Paging error")
-    }
-
-     private suspend fun messageMapping(chatMessageFirestore: ChatMessageFirestore): ChatMessage {
-        val userSender: User = firebaseStorage.findUserByRef(chatMessageFirestore.senderId!!)
-        return ChatMessage(
-            id = chatMessageFirestore.id!!,
-            sender = userSender,
-            message = chatMessageFirestore.message!!,
-            date = chatMessageFirestore.timestamp!!
-        )
-    }
-
     override fun createNewChat(userSender: User, users: List<User>) = flow<ResultData<Chat>> {
         emit(ResultData.loading(null))
         firebaseStorage.createNewChat(userSender = userSender, users = users, flow = this)
@@ -140,22 +105,34 @@ class UserRepositoryImpl constructor(
         firebaseStorage.fetchChats(user = userSender).collect {
             when (it) {
                 is ResultData.Success -> {
-                    trySendBlocking((ResultData.success(
-                        chatMapping(userSender = userSender,
-                            chatFirestore = it.value)
-                    )))
+                    trySendBlocking(
+                        (ResultData.success(
+                            chatMapping(
+                                userSender = userSender,
+                                chatFirestore = it.value
+                            )
+                        ))
+                    )
                 }
                 is ResultData.Update -> {
-                    trySendBlocking((ResultData.update(
-                        chatMapping(userSender = userSender,
-                            chatFirestore = it.value)
-                    )))
+                    trySendBlocking(
+                        (ResultData.update(
+                            chatMapping(
+                                userSender = userSender,
+                                chatFirestore = it.value
+                            )
+                        ))
+                    )
                 }
                 is ResultData.Removed -> {
-                    trySendBlocking((ResultData.removed(
-                        chatMapping(userSender = userSender,
-                            chatFirestore = it.value)
-                    )))
+                    trySendBlocking(
+                        (ResultData.removed(
+                            chatMapping(
+                                userSender = userSender,
+                                chatFirestore = it.value
+                            )
+                        ))
+                    )
                 }
                 else -> {}
             }

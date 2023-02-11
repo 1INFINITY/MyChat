@@ -23,14 +23,12 @@ import kotlinx.coroutines.launch
 import java.util.*
 
 class ChatViewModel(
-    private val repository: UserRepository,
     private val getCachedUserUseCase: GetCachedUserUseCase,
     private val loadChatUseCase: LoadChatUseCase,
     private val observeChatUseCase: ObserveChatUseCase,
     private val sendMessageUseCase: SendMessageUseCase,
     private val changeMessageUseCase: ChangeMessageUseCase,
     private val deleteMessageUseCase: DeleteMessageUseCase,
-    private val pagingSourceFactory: ChatMessagePageSource.Factory,
 ) :
     BaseViewModel<ChatContract.Event, ChatContract.State, ChatContract.Effect>() {
 
@@ -39,11 +37,10 @@ class ChatViewModel(
     private lateinit var userSender: User
     private lateinit var userReceiver: User
     private var chatListenJob: Job? = null
-    private var messages: MutableList<ChatMessage> = mutableListOf()
 
     val pagingMessages: StateFlow<PagingData<ChatMessage>> by lazy(LazyThreadSafetyMode.NONE) {
-        repository
-            .getMessages(chat = chat)
+        observeChatUseCase
+            .execute(chat = chat, scope = viewModelScope)
             .stateIn(viewModelScope, SharingStarted.Lazily, PagingData.empty())
     }
     override fun createInitialState(): ChatContract.State {
@@ -135,54 +132,6 @@ class ChatViewModel(
                     chatName = userReceiver.name
                 )
             }
-//            observeChatUseCase.execute(chat = chat).collect { result ->
-//                when (result) {
-//                    is ResultData.Removed -> {
-//                        val index = messages.indexOfFirst { it.id == result.value.id }
-//                        messages.removeAt(index)
-//                        setState {
-//                            copy(
-//                                recyclerViewState = ChatContract.RecyclerViewState.Success(
-//                                    chatMessages = messages.toList())
-//                            )
-//                        }
-//                    }
-//                    is ResultData.Update -> {
-//                        val index = messages.indexOfFirst { it.id == result.value.id }
-//                        messages[index] = result.value
-//                        setState {
-//                            copy(
-//                                recyclerViewState = ChatContract.RecyclerViewState.Success(
-//                                    chatMessages = messages.toList())
-//                            )
-//                        }
-//                    }
-//                    is ResultData.Success -> {
-//                        messages.add(result.value)
-//                        messages.sortBy { it.date }
-//                        setState {
-//                            copy(
-//                                recyclerViewState = ChatContract.RecyclerViewState.Success(
-//                                    chatMessages = messages.toList())
-//                            )
-//                        }
-//                    }
-//                    is ResultData.Loading -> {
-//                        setState {
-//                            copy(
-//                                recyclerViewState = ChatContract.RecyclerViewState.Loading
-//                            )
-//                        }
-//                    }
-//                    is ResultData.Failure -> {
-//                        setState {
-//                            copy(
-//                                recyclerViewState = ChatContract.RecyclerViewState.Error(result.message)
-//                            )
-//                        }
-//                    }
-//                }
-//            }
         }
     }
 
